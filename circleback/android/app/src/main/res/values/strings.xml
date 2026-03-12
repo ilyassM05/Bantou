@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Web/Server OAuth 2.0 client ID — used by google_sign_in to request an idToken -->
+    <string name="default_web_client_id">744799157092-klp2t0h00bjfg0ps2166k6a4fn7c7ndb.apps.googleusercontent.com</string>
+    <!-- App name (required by Facebook SDK's FacebookActivity) -->
+    <string name="app_name">Bantou</string>
+    <!-- Facebook Login -->
+    <string name="facebook_app_id">4511985445703623</string>
+    <string name="fb_login_protocol_scheme">fb4511985445703623</string>
+    <string name="facebook_client_token">7ba846c1773b702dad9679902e112a20</string>
+</resources>
