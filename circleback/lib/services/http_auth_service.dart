@@ -27,6 +27,11 @@ class HttpAuthService implements AuthService {
   /// Role of the currently signed-in user ('SA' for full admin, 'ADMIN' for restricted)
   static String? currentUserRole;
 
+  /// True when the current user is a freshly-invited admin who has not yet
+  /// completed their personal profile. Set from the backend `isInvitedAdmin`
+  /// field and cleared once the profile is saved.
+  static bool currentIsInvitedAdmin = false;
+
   // ── Deep link / invite state ───────────────────────────────────────────
   /// Invite token extracted from a `bantou://invite?token=...` deep link.
   static String? pendingInviteToken;
@@ -66,6 +71,7 @@ class HttpAuthService implements AuthService {
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
         currentUserRole = body['role'] as String?;
+        currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         // Save token for biometric login
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
@@ -116,13 +122,15 @@ class HttpAuthService implements AuthService {
         final body = jsonDecode(response.body);
         final token = body['token'] ?? '';
         currentUser = {'name': name, 'email': email};
-        currentUserNeedsSetup = true; // new user always needs setup
+        currentUserNeedsSetup = true; // new user always needs profile setup
         // onboardingSeen=true means they were an invited admin (already linked)
         // so they do NOT need onboarding. Regular new users get false → needs onboarding.
         final onboardingSeen = body['onboardingSeen'] as bool? ?? false;
         currentUserNeedsOnboarding = !onboardingSeen;
         // role is returned at top-level in the signup response
         currentUserRole = body['role'] as String?;
+        // Dedicated flag for invited admins — more reliable than just checking role
+        currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         clearPendingInvite(); // clear invite state after successful signup
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
@@ -271,6 +279,7 @@ class HttpAuthService implements AuthService {
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
         currentUserRole = body['role'] as String?;
+        currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
             token: token,
@@ -318,6 +327,7 @@ class HttpAuthService implements AuthService {
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
         currentUserRole = body['role'] as String?;
+        currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
             token: token,
@@ -351,6 +361,7 @@ class HttpAuthService implements AuthService {
     currentUserNeedsSetup = false;
     currentUserNeedsOnboarding = false;
     currentUserRole = null;
+    currentIsInvitedAdmin = false;
     await BiometricService.clearToken();
     await GoogleSignInService.signOut();
     await FacebookSignInService.signOut();
@@ -430,6 +441,7 @@ class HttpAuthService implements AuthService {
         final body = jsonDecode(response.body);
         if (body['upgraded'] == true) {
           currentUserRole = 'SA';
+          currentIsInvitedAdmin = false; // no longer an invited-admin once upgraded
         }
         currentUserNeedsSetup = false;
         return true;

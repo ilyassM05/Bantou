@@ -85,7 +85,9 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                 : Column(
                     children: [
                       _buildHeader(context),
-                      if (HttpAuthService.currentUserRole == 'ADMIN' && HttpAuthService.currentUserNeedsSetup)
+                      if ((HttpAuthService.currentUserRole == 'ADMIN' ||
+                           HttpAuthService.currentIsInvitedAdmin) &&
+                          HttpAuthService.currentUserNeedsSetup)
                         _buildRestrictedAdminBanner(context),
                       Expanded(
                         child: SingleChildScrollView(
@@ -149,7 +151,9 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                     ],
                   ),
         ),
-      floatingActionButton: (HttpAuthService.currentUserRole == 'ADMIN' && HttpAuthService.currentUserNeedsSetup)
+      floatingActionButton: ((HttpAuthService.currentUserRole == 'ADMIN' ||
+          HttpAuthService.currentIsInvitedAdmin) &&
+          HttpAuthService.currentUserNeedsSetup)
           ? null 
           : FloatingActionButton.extended(
               onPressed: () async {
@@ -272,7 +276,12 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
-            onPressed: () => Navigator.pushReplacementNamed(context, '/auth'),
+            onPressed: () async {
+              await HttpAuthService().signOut();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/auth');
+              }
+            },
           ),
           const SizedBox(width: 8),
           GestureDetector(

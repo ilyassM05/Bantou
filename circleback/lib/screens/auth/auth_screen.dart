@@ -117,13 +117,14 @@ class _AuthScreenState extends State<AuthScreen>
 
   // ── Navigation ─────────────────────────────────────────────────────────
   /// All post-auth paths converge here.
-  /// - Invited admin (role == 'ADMIN') → Dashboard directly (limited access)
+  /// - Invited admin (isInvitedAdmin flag OR role == 'ADMIN') → Dashboard (limited access)
   /// - First-time creator → Association setup → Profile setup → Dashboard
   /// - Returning user → Dashboard directly
   void _goToCorrectScreen() {
-    // Invited admins always go straight to dashboard — their role is the
-    // definitive signal, more reliable than the onboardingSeen flag.
-    final isInvitedAdmin = HttpAuthService.currentUserRole == 'ADMIN';
+    // Use the explicit flag first; fall back to role check for safety.
+    // Both signals must agree before sending someone to the association form.
+    final isInvitedAdmin = HttpAuthService.currentIsInvitedAdmin ||
+        HttpAuthService.currentUserRole == 'ADMIN';
 
     if (!isInvitedAdmin && HttpAuthService.currentUserNeedsOnboarding) {
       Navigator.pushReplacementNamed(

@@ -25,11 +25,17 @@ const Association = {
      * @returns {object|null}
      */
     async findByAdminEmail(email) {
+        // Normalise case — emails should always be compared case-insensitively
+        const normalised = (email || '').trim().toLowerCase();
         // Match the email exactly as it appears inside the JSON array string
+        // We use LOWER() on the column to handle any mixed-case stored values.
         const [rows] = await db.query(
-            `SELECT * FROM associations WHERE admin_emails LIKE ?`,
-            [`%"${email}"%`]
+            `SELECT * FROM associations WHERE LOWER(admin_emails) LIKE ?`,
+            [`%"${normalised}"%`]
         );
+        if (!rows[0]) {
+            console.warn(`[Association.findByAdminEmail] No match for "${normalised}"`);
+        }
         return rows[0] || null;
     },
 

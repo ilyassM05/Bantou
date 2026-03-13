@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/http_auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/language_picker.dart';
 import '../auth/edit_profile_screen.dart';
@@ -102,7 +103,12 @@ class HomeScreen extends StatelessWidget {
               color: AppColors.primary,
               size: 22,
             ),
-            onPressed: () => Navigator.pushReplacementNamed(context, '/auth'),
+            onPressed: () async {
+              await HttpAuthService().signOut();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/auth');
+              }
+            },
           ),
         ],
       ),

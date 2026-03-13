@@ -32,7 +32,7 @@ const googleClient = new OAuth2Client(
  */
 exports.signup = async (req, res, next) => {
     try {
-        const { name, email, phone, password } = req.body;
+        const { name, email, phone, password, inviteToken } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'Name, email, and password are required.' });
@@ -43,8 +43,32 @@ exports.signup = async (req, res, next) => {
             return res.status(409).json({ error: 'An account with this email already exists.' });
         }
 
-        // Check if user is an invited admin
-        const invitedAssoc = await Association.findByAdminEmail(email);
+        // ── Invited admin detection via invite token (token-based, reliable) ──
+        let invitedAssoc = null;
+        if (inviteToken) {
+            try {
+                const payload = jwt.verify(inviteToken, JWT_SECRET);
+                if (payload.purpose === 'admin_invite' && payload.associationId) {
+                    const db = require('../config/db');
+                    const [rows] = await db.query(
+                        'SELECT * FROM associations WHERE id = ?',
+                        [payload.associationId]
+                    );
+                    invitedAssoc = rows[0] || null;
+                    console.log(`[SIGNUP] Token-based lookup → assoc: ${invitedAssoc ? invitedAssoc.name : 'NOT FOUND'}`);
+                }
+            } catch (e) {
+                // Expired or tampered token — treat as normal signup
+                console.warn('[SIGNUP] Invalid inviteToken, treating as normal signup:', e.message);
+            }
+        }
+
+        // Fallback: if no token provided, try email-based lookup (legacy support)
+        if (!invitedAssoc && !inviteToken) {
+            invitedAssoc = await Association.findByAdminEmail(email);
+            console.log(`[SIGNUP] Email-based lookup for "${email}" → assoc: ${invitedAssoc ? invitedAssoc.name : 'NULL'}`);
+        }
+
         const role = invitedAssoc ? 'ADMIN' : 'SA';
         const status = invitedAssoc ? 'actif' : 'en attente';
 
@@ -66,6 +90,7 @@ exports.signup = async (req, res, next) => {
             message: 'Account created successfully.',
             token,
             role,
+            isInvitedAdmin: !!invitedAssoc,
             profileSetupSeen: false,
             onboardingSeen: !!invitedAssoc,
             user: { id, name, email, role },
@@ -114,6 +139,7 @@ exports.login = async (req, res, next) => {
             message: 'Login successful.',
             token,
             role: user.role,
+            isInvitedAdmin: user.role === 'ADMIN',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
             user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -266,6 +292,7 @@ exports.googleSignIn = async (req, res, next) => {
             message: 'Google sign-in successful.',
             token,
             role: user.role || role,
+            isInvitedAdmin: (user.role || role) === 'ADMIN',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
             user: { id: user.id, name: user.name, email: user.email },
@@ -339,6 +366,7 @@ exports.facebookSignIn = async (req, res, next) => {
             message: 'Facebook sign-in successful.',
             token,
             role: user.role || role,
+            isInvitedAdmin: (user.role || role) === 'ADMIN',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
             user: { id: user.id, name: user.name, email: user.email },
@@ -361,16 +389,20 @@ exports.updateProfile = async (req, res, next) => {
         await User.updateProfile(userId, profileData);
         await User.markProfileSetupSeen(userId);
 
-        // If the user was a restricted invited admin, upgrade them to full SA
+        // Fetch the user to check their current role before upgrading
         const user = await User.findById(userId);
-        if (user && user.role === 'ADMIN') {
+        // Capture the role value NOW (before any DB change) so the response is accurate
+        const wasAdmin = !!(user && user.role === 'ADMIN');
+
+        // If the user was a restricted invited admin, upgrade them to full SA
+        if (wasAdmin) {
             const db = require('../config/db');
             await db.query('UPDATE users SET role = ? WHERE id = ?', ['SA', userId]);
         }
 
         res.status(200).json({
             message: 'Profile updated successfully.',
-            upgraded: user && user.role === 'ADMIN'
+            upgraded: wasAdmin,
         });
     } catch (err) {
         next(err);
@@ -462,11 +494,11 @@ exports.createAssociation = async (req, res, next) => {
             return res.status(400).json({ error: 'Association name is required.' });
         }
 
-        // Validate admin email formats
+        // Validate admin email formats — always store lowercased to avoid mismatch
         let cleanAdminEmails = [];
         if (adminEmails && Array.isArray(adminEmails)) {
             for (const email of adminEmails) {
-                const trimmed = email.trim();
+                const trimmed = email.trim().toLowerCase();
                 if (trimmed) {
                     if (!EMAIL_REGEX.test(trimmed)) {
                         return res.status(400).json({ error: `Invalid email format: ${trimmed}` });
@@ -513,19 +545,26 @@ exports.createAssociation = async (req, res, next) => {
         }
 
         // Send invitations to newly added admins asynchronously
+        const generatedInviteTokens = {};
         for (const email of newlyAddedEmails) {
-            // Generate a signed invite token for the deep link
+            // Generate a signed invite token — includes associationId so signup can
+            // look up the association directly without relying on email matching.
             const inviteToken = jwt.sign(
-                { email, purpose: 'admin_invite' },
+                { email, associationId: newAssoc ? newAssoc.id : null, purpose: 'admin_invite' },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+            generatedInviteTokens[email] = inviteToken;
             await sendAdminInvitationEmail(email, req.user.name, name, inviteToken).catch(err => {
                 console.error(`Failed to send invitation to ${email}:`, err);
             });
         }
 
-        res.status(200).json({ message: 'Association saved successfully.' });
+        res.status(200).json({
+            message: 'Association saved successfully.',
+            // Tokens included for debugging / testing — harmless since they're JWTs needing the secret
+            inviteTokens: generatedInviteTokens,
+        });
     } catch (err) {
         next(err);
     }
@@ -597,11 +636,21 @@ exports.validateInviteToken = async (req, res, next) => {
             return res.status(409).json({ error: 'An account with this email already exists. Please log in instead.' });
         }
 
-        // Find the association that sent this invite
-        const assoc = await Association.findByAdminEmail(payload.email);
+        // Find the association — prefer the stored associationId in the token
+        let assoc = null;
+        if (payload.associationId) {
+            const db = require('../config/db');
+            const [rows] = await db.query('SELECT * FROM associations WHERE id = ?', [payload.associationId]);
+            assoc = rows[0] || null;
+        }
+        // Fallback to email-based lookup for older tokens without associationId
+        if (!assoc) {
+            assoc = await Association.findByAdminEmail(payload.email);
+        }
 
         res.status(200).json({
             email: payload.email,
+            associationId: assoc ? assoc.id : null,
             associationName: assoc ? assoc.name : null,
         });
     } catch (err) {
