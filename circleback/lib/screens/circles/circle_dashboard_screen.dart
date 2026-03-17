@@ -6,6 +6,7 @@ import '../../services/circle_service.dart';
 import '../../services/http_auth_service.dart';
 import 'circle_details_screen.dart';
 import 'create_circle_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// The actual Circle Dashboard showing statistics and active circles.
 class CircleDashboardScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
   int _meetingsCount = 0;
   List<dynamic> _circles = [];
   String? _errorMessage;
+  String _searchQuery = '';
 
   @override
   void didChangeDependencies() {
@@ -75,6 +77,13 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
     final name = _user?['name'] ?? 'Bantou User';
     final firstName = name.split(' ').first;
 
+    final filteredCircles = _searchQuery.isEmpty
+        ? _circles
+        : _circles.where((c) {
+            final circleName = (c['name'] as String?)?.toLowerCase() ?? '';
+            return circleName.contains(_searchQuery.toLowerCase());
+          }).toList();
+
     return Scaffold(
       backgroundColor: AppColors.gradientStart,
       body: SafeArea(
@@ -108,7 +117,21 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(32.0),
                                     child: Text(
-                                      'No circles created yet.\nTap New Circle to get started!',
+                                      AppLocalizations.of(context).cdNoCircles,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        color: AppColors.textSecondary,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else if (filteredCircles.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Text(
+                                      AppLocalizations.of(context).cdNoSearchResults,
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.inter(
                                         color: AppColors.textSecondary,
@@ -118,7 +141,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                                   ),
                                 )
                               else
-                                ..._circles.map((circle) {
+                                ...filteredCircles.map((circle) {
                                   // Format date properly from ISO string
                                   String formattedDate = circle['createdAt'] ?? '';
                                   if (formattedDate.isNotEmpty) {
@@ -139,7 +162,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                                       viceResponsibleName: circle['viceResponsible'] ?? '',
                                       meetingDate: formattedDate,
                                       meetingTime: circle['meetingPlanning'] ?? 'TBD',
-                                      status: circle['status'] ?? 'Active',
+                                      status: circle['status'] ?? AppLocalizations.of(context).cdActive,
                                     ),
                                   );
                                 }),
@@ -165,7 +188,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
               backgroundColor: AppColors.primary,
               icon: const Icon(Icons.add, color: Colors.white),
               label: Text(
-                'New Circle',
+                AppLocalizations.of(context).cdNewCircle,
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -188,19 +211,21 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
             children: [
               const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Action Required',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.amber.shade900,
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context).cdActionRequired,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.amber.shade900,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Please complete your profile to unlock full administrative features (e.g., creating circles).',
+            AppLocalizations.of(context).cdActionMsg,
             style: GoogleFonts.inter(
               color: Colors.amber.shade900,
               fontSize: 13,
@@ -222,7 +247,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                 backgroundColor: Colors.amber,
               ),
               child: Text(
-                'Complete Profile',
+                AppLocalizations.of(context).cdCompleteProfile,
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -257,7 +282,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                crossAxisAlignment: CrossAxisAlignment.start,
                children: [
                  Text(
-                   'Bantou',
+                   AppLocalizations.of(context).appName,
                    style: GoogleFonts.inter(
                      fontSize: 18,
                      fontWeight: FontWeight.w700,
@@ -265,7 +290,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                    ),
                  ),
                  Text(
-                   'Je suis parce que nous sommes',
+                   AppLocalizations.of(context).appSubtitle,
                    style: GoogleFonts.inter(
                      fontSize: 11,
                      color: AppColors.textSecondary,
@@ -305,7 +330,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
   }
 
   Widget _buildWelcomeSection(String firstName) {
-    final displayAssociationName = _associationName ?? "No Association Attached";
+    final displayAssociationName = _associationName ?? AppLocalizations.of(context).cdNoAssoc;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,34 +338,38 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.apartment_rounded, size: 14, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    displayAssociationName,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryDark,
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.apartment_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        displayAssociationName,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
         Text(
-          'Welcome back, $firstName',
+          '${AppLocalizations.of(context).cdWelcome} $firstName',
           style: GoogleFonts.inter(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -349,7 +378,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'You have 3 meetings scheduled this week.',
+          AppLocalizations.of(context).cdMeetingsThisWeek(_meetingsCount),
           style: GoogleFonts.inter(
             fontSize: 14,
             color: AppColors.textSecondary,
@@ -362,11 +391,11 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatItem('${_circles.length}', 'Total Circles')),
+        Expanded(child: _buildStatItem('${_circles.length}', AppLocalizations.of(context).cdTotalCircles)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatItem('$_activeMembersCount', 'Active Members')),
+        Expanded(child: _buildStatItem('$_activeMembersCount', AppLocalizations.of(context).cdActiveMembers)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatItem('$_meetingsCount', 'Meetings')),
+        Expanded(child: _buildStatItem('$_meetingsCount', AppLocalizations.of(context).cdMeetings)),
       ],
     );
   }
@@ -414,19 +443,22 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'Your Association Circles',
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+        Expanded(
+          child: Text(
+            AppLocalizations.of(context).cdAssocCircles,
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         TextButton.icon(
           onPressed: () {},
           icon: const Icon(Icons.map_outlined, size: 16, color: AppColors.primary),
           label: Text(
-            'View Map',
+            AppLocalizations.of(context).cdViewMap,
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -453,8 +485,13 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
               decoration: InputDecoration(
-                hintText: 'Search circles or locations...',
+                hintText: AppLocalizations.of(context).cdSearch,
                 hintStyle: GoogleFonts.inter(
                   color: AppColors.textSecondary,
                   fontSize: 14,
@@ -564,14 +601,14 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
             children: [
               Expanded(
                 child: _buildMemberInfo(
-                  label: 'Responsible',
+                  label: AppLocalizations.of(context).cdResponsibleSmall,
                   name: responsibleName,
                   color: const Color(0xFF4285F4),
                 ),
               ),
               Expanded(
                 child: _buildMemberInfo(
-                  label: 'Vice-Responsible',
+                  label: AppLocalizations.of(context).cdViceResponsibleSmall,
                   name: viceResponsibleName,
                   color: const Color(0xFFF9AB00),
                 ),
@@ -590,21 +627,23 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
               children: [
                 const Icon(Icons.event_outlined, size: 18, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Meeting',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context).cdMeetingLabel,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        meetingDate.isNotEmpty ? meetingDate : 'No date set',
+                        meetingDate.isNotEmpty ? meetingDate : AppLocalizations.of(context).cdNoDate,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.end,
                         style: GoogleFonts.inter(

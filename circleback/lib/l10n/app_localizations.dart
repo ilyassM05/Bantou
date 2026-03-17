@@ -180,6 +180,27 @@ class AppLocalizations {
       'cdMeetingPlanningLabel': 'Meeting Planning',
       'cdMeetingPlanningHint': 'e.g. Every Monday at 10 AM',
       'cdSaveBtn': 'Save Changes',
+      'cdActionRequired': 'Action Required',
+      'cdActionMsg': 'Please complete your profile to unlock full administrative features (e.g., creating circles).',
+      'cdCompleteProfile': 'Complete Profile',
+      'cdWelcome': 'Welcome back,',
+      'cdMeetingsThisWeek': 'You have {count} meetings scheduled this week.',
+      'cdTotalCircles': 'Total Circles',
+      'cdActiveMembers': 'Active Members',
+      'cdMeetings': 'Meetings',
+      'cdAssocCircles': 'Your Association Circles',
+      'cdViewMap': 'View Map',
+      'cdSearch': 'Search circles or locations...',
+      'cdNoCircles': 'No circles created yet.\nTap New Circle to get started!',
+      'cdNoSearchResults': 'No circles found matching your search.',
+      'cdNewCircle': 'New Circle',
+      'cdActive': 'Active',
+      'cdNoDate': 'No date set',
+      'cdMeetingLabel': 'Meeting',
+      'cdResponsibleSmall': 'Responsible',
+      'cdViceResponsibleSmall': 'Vice-Responsible',
+      'cdNoAssoc': 'No Association Attached',
+
     },
 
     // ── French ───────────────────────────────────────────────────────────
@@ -338,6 +359,27 @@ class AppLocalizations {
       'cdMeetingPlanningLabel': 'Planification des réunions',
       'cdMeetingPlanningHint': 'ex: Tous les lundis à 10h',
       'cdSaveBtn': 'Enregistrer',
+      'cdActionRequired': 'Action requise',
+      'cdActionMsg': 'Veuillez compléter votre profil pour débloquer toutes les fonctionnalités (ex: créer des cercles).',
+      'cdCompleteProfile': 'Compléter le profil',
+      'cdWelcome': 'Bon retour,',
+      'cdMeetingsThisWeek': 'Vous avez {count} réunions prévues cette semaine.',
+      'cdTotalCircles': 'Total des Cercles',
+      'cdActiveMembers': 'Membres Actifs',
+      'cdMeetings': 'Réunions',
+      'cdAssocCircles': 'Cercles de votre association',
+      'cdViewMap': 'Voir la carte',
+      'cdSearch': 'Rechercher des cercles ou des lieux...',
+      'cdNoCircles': 'Aucun cercle créé.\nAppuyez sur Nouveau Cercle pour commencer !',
+      'cdNoSearchResults': 'Aucun cercle trouvé correspondant à votre recherche.',
+      'cdNewCircle': 'Nouveau Cercle',
+      'cdActive': 'Actif',
+      'cdNoDate': 'Aucune date définie',
+      'cdMeetingLabel': 'Réunion',
+      'cdResponsibleSmall': 'Responsable',
+      'cdViceResponsibleSmall': 'Vice-Responsable',
+      'cdNoAssoc': 'Aucune association liée',
+
     },
 
     // ── Spanish ──────────────────────────────────────────────────────────
@@ -495,6 +537,27 @@ class AppLocalizations {
       'cdMeetingPlanningLabel': 'Planificación de reuniones',
       'cdMeetingPlanningHint': 'ej. Todos los lunes a las 10 AM',
       'cdSaveBtn': 'Guardar Cambios',
+      'cdActionRequired': 'Acción requerida',
+      'cdActionMsg': 'Por favor, completa tu perfil para desbloquear todas las funciones (ej. crear círculos).',
+      'cdCompleteProfile': 'Completar perfil',
+      'cdWelcome': 'Bienvenido de nuevo,',
+      'cdMeetingsThisWeek': 'Tienes {count} reuniones programadas esta semana.',
+      'cdTotalCircles': 'Total de Círculos',
+      'cdActiveMembers': 'Miembros Activos',
+      'cdMeetings': 'Reuniones',
+      'cdAssocCircles': 'Círculos de tu asociación',
+      'cdViewMap': 'Ver mapa',
+      'cdSearch': 'Buscar círculos o lugares...',
+      'cdNoCircles': 'No hay círculos creados.\n¡Toca Nuevo Círculo para empezar!',
+      'cdNoSearchResults': 'No se encontraron círculos que coincidan con su búsqueda.',
+      'cdNewCircle': 'Nuevo Círculo',
+      'cdActive': 'Activo',
+      'cdNoDate': 'Sin fecha',
+      'cdMeetingLabel': 'Reunión',
+      'cdResponsibleSmall': 'Responsable',
+      'cdViceResponsibleSmall': 'Vice-Responsable',
+      'cdNoAssoc': 'Ninguna asociación adjunta',
+
     },
 
     // ── Arabic ───────────────────────────────────────────────────────────
@@ -652,6 +715,27 @@ class AppLocalizations {
       'cdMeetingPlanningLabel': 'تخطيط الاجتماعات',
       'cdMeetingPlanningHint': 'مثال: كل يوم اثنين الساعة 10 صباحًا',
       'cdSaveBtn': 'حفظ التغييرات',
+      'cdActionRequired': 'إجراء مطلوب',
+      'cdActionMsg': 'يرجى إكمال ملفك الشخصي لفتح جميع الميزات (مثل إنشاء دوائر).',
+      'cdCompleteProfile': 'إكمال الملف الشخصي',
+      'cdWelcome': 'مرحباً بـعودتك،',
+      'cdMeetingsThisWeek': 'لديك {count} اجتماعات مقررة هذا الأسبوع.',
+      'cdTotalCircles': 'إجمالي الدوائر',
+      'cdActiveMembers': 'الأعضاء النشطين',
+      'cdMeetings': 'الاجتماعات',
+      'cdAssocCircles': 'دوائر جمعيتك',
+      'cdViewMap': 'عرض الخريطة',
+      'cdSearch': 'ابحث عن الدوائر أو الأماكن...',
+      'cdNoCircles': 'لا توجد دوائر بعد.\nاضغط على دائرة جديدة للبدء!',
+      'cdNoSearchResults': 'لم يتم العثور على دوائر تطابق بحثك.',
+      'cdNewCircle': 'دائرة جديدة',
+      'cdActive': 'نشط',
+      'cdNoDate': 'لم يتم تحديد تاريخ',
+      'cdMeetingLabel': 'اجتماع',
+      'cdResponsibleSmall': 'المسؤول',
+      'cdViceResponsibleSmall': 'نائب المسؤول',
+      'cdNoAssoc': 'لا توجد جمعية مرتبطة',
+
     },
   };
 
@@ -800,7 +884,7 @@ class AppLocalizations {
   String get caEmailRequired => _t('caEmailRequired');
   String get caPhoneRequired => _t('caPhoneRequired');
 
-  // Circle Dashboard
+  // Circle Dashboard (Form)
   String get cdTitle => _t('cdTitle');
   String get cdCircleNameLabel => _t('cdCircleNameLabel');
   String get cdCircleNameHint => _t('cdCircleNameHint');
@@ -815,6 +899,26 @@ class AppLocalizations {
   String get cdMeetingPlanningLabel => _t('cdMeetingPlanningLabel');
   String get cdMeetingPlanningHint => _t('cdMeetingPlanningHint');
   String get cdSaveBtn => _t('cdSaveBtn');
+  String get cdActionRequired => _t('cdActionRequired');
+  String get cdActionMsg => _t('cdActionMsg');
+  String get cdCompleteProfile => _t('cdCompleteProfile');
+  String get cdWelcome => _t('cdWelcome');
+  String cdMeetingsThisWeek(int count) => _t('cdMeetingsThisWeek').toString().replaceAll('{count}', count.toString());
+  String get cdTotalCircles => _t('cdTotalCircles');
+  String get cdActiveMembers => _t('cdActiveMembers');
+  String get cdMeetings => _t('cdMeetings');
+  String get cdAssocCircles => _t('cdAssocCircles');
+  String get cdViewMap => _t('cdViewMap');
+  String get cdSearch => _t('cdSearch');
+  String get cdNoCircles => _t('cdNoCircles');
+  String get cdNoSearchResults => _t('cdNoSearchResults');
+  String get cdNewCircle => _t('cdNewCircle');
+  String get cdActive => _t('cdActive');
+  String get cdNoDate => _t('cdNoDate');
+  String get cdMeetingLabel => _t('cdMeetingLabel');
+  String get cdResponsibleSmall => _t('cdResponsibleSmall');
+  String get cdViceResponsibleSmall => _t('cdViceResponsibleSmall');
+  String get cdNoAssoc => _t('cdNoAssoc');
 
   // We cast to List<String> since this specific key is a list
   List<String> get psAvatarTooltips {
