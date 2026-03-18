@@ -11,6 +11,7 @@ class CircleService {
 
   Future<Map<String, dynamic>> createCircle({
     required String name,
+    String? description,
     required String country,
     required String city,
     required String responsible,
@@ -29,6 +30,7 @@ class CircleService {
         },
         body: jsonEncode({
           'name': name,
+          if (description != null && description.isNotEmpty) 'description': description,
           'country': country,
           'city': city,
           'responsible': responsible,
@@ -70,6 +72,49 @@ class CircleService {
       }
     } catch (e) {
       throw Exception('Fetch circles failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateCircle(
+    int circleId, {
+    required String name,
+    String? description,
+    required String country,
+    required String city,
+    required String responsible,
+    required String viceResponsible,
+    required String meetingPlanning,
+  }) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/$circleId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'country': country,
+          'city': city,
+          'responsible': responsible,
+          'viceResponsible': viceResponsible,
+          'meetingPlanning': meetingPlanning,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data; 
+      } else {
+        throw Exception(data['error'] ?? 'Failed to update circle');
+      }
+    } catch (e) {
+      throw Exception('Update circle failed: $e');
     }
   }
 }

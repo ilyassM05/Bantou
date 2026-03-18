@@ -10,6 +10,7 @@ const Circle = {
             association_id,
             created_by,
             name,
+            description,
             country,
             city,
             responsible,
@@ -20,12 +21,13 @@ const Circle = {
 
         const [result] = await db.query(
             `INSERT INTO circles 
-             (association_id, created_by, name, country, city, responsible, vice_responsible, meeting_planning, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (association_id, created_by, name, description, country, city, responsible, vice_responsible, meeting_planning, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 association_id,
                 created_by,
                 name,
+                description || null,
                 country,
                 city,
                 responsible,
@@ -48,6 +50,46 @@ const Circle = {
             [associationId]
         );
         return rows;
+    },
+
+    /**
+     * Update an existing circle by its ID
+     */
+    async update(id, data) {
+        const {
+            name,
+            description,
+            country,
+            city,
+            responsible,
+            vice_responsible,
+            meeting_planning,
+            status
+        } = data;
+
+        await db.query(
+            `UPDATE circles 
+             SET name = COALESCE(?, name), 
+                 description = ?, 
+                 country = COALESCE(?, country), 
+                 city = COALESCE(?, city), 
+                 responsible = COALESCE(?, responsible), 
+                 vice_responsible = COALESCE(?, vice_responsible), 
+                 meeting_planning = COALESCE(?, meeting_planning), 
+                 status = COALESCE(?, status)
+             WHERE id = ?`,
+            [
+                name,
+                description || null,
+                country,
+                city,
+                responsible,
+                vice_responsible,
+                meeting_planning,
+                status,
+                id
+            ]
+        );
     },
 
     /**

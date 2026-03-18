@@ -17,6 +17,7 @@ class AuthTextField extends StatefulWidget {
     this.textInputAction = TextInputAction.next,
     this.onFieldSubmitted,
     this.enabled = true,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -29,6 +30,7 @@ class AuthTextField extends StatefulWidget {
   final TextInputAction textInputAction;
   final void Function(String)? onFieldSubmitted;
   final bool enabled;
+  final int maxLines;
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -55,6 +57,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
           controller: widget.controller,
           obscureText: widget.isPassword && _obscure,
           keyboardType: widget.keyboardType,
+          maxLines: widget.maxLines,
           textInputAction: widget.textInputAction,
           validator: widget.validator,
           onFieldSubmitted: widget.onFieldSubmitted,

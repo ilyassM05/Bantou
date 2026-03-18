@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/auth_text_field.dart';
+import '../../services/circle_service.dart';
 
 /// Screen representing the details of a specific Circle.
 class CircleDetailsScreen extends StatefulWidget {
@@ -47,10 +49,11 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
-            onPressed: () {},
-          ),
+          if (_circleData?['isAdmin'] == true)
+            IconButton(
+              icon: const Icon(Icons.edit, color: AppColors.textPrimary),
+              onPressed: _showEditModal,
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -135,7 +138,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          'A professional group focused on cross-industry collaboration and digital transformation strategies within the Tech Association.',
+          _circleData?['description'] ?? 'No description provided.',
           style: GoogleFonts.inter(
             fontSize: 14,
             height: 1.5,
@@ -367,6 +370,182 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditModal() {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController(text: _circleData?['name']);
+    final descCtrl = TextEditingController(text: _circleData?['description']);
+    final countryCtrl = TextEditingController(text: _circleData?['country']);
+    final cityCtrl = TextEditingController(text: _circleData?['city']);
+    final respCtrl = TextEditingController(text: _circleData?['responsible']);
+    final viceRespCtrl = TextEditingController(text: _circleData?['viceResponsible'] ?? _circleData?['vice_responsible']);
+    final meetCtrl = TextEditingController(text: _circleData?['meetingPlanning'] ?? _circleData?['meeting_planning']);
+    bool isLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                top: 24,
+                left: 24,
+                right: 24,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.cardSurface,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Edit Circle',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      AuthTextField(
+                        label: 'Circle Name',
+                        hint: 'e.g. IT Leaders Network',
+                        icon: Icons.groups_rounded,
+                        controller: nameCtrl,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Description',
+                        hint: 'Describe the purpose...',
+                        icon: Icons.description_rounded,
+                        controller: descCtrl,
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AuthTextField(
+                              label: 'Country',
+                              hint: 'Country',
+                              icon: Icons.public_rounded,
+                              controller: countryCtrl,
+                              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: AuthTextField(
+                              label: 'City',
+                              hint: 'City',
+                              icon: Icons.location_city_rounded,
+                              controller: cityCtrl,
+                              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Responsible',
+                        hint: 'Name',
+                        icon: Icons.person_rounded,
+                        controller: respCtrl,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Vice-Responsible',
+                        hint: 'Name',
+                        icon: Icons.person_outline_rounded,
+                        controller: viceRespCtrl,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Meeting Planning',
+                        hint: 'e.g. Every Monday at 10 AM',
+                        icon: Icons.calendar_month_rounded,
+                        controller: meetCtrl,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: isLoading ? null : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setModalState(() => isLoading = true);
+                            try {
+                              await CircleService().updateCircle(
+                                _circleData!['id'],
+                                name: nameCtrl.text.trim(),
+                                description: descCtrl.text.trim(),
+                                country: countryCtrl.text.trim(),
+                                city: cityCtrl.text.trim(),
+                                responsible: respCtrl.text.trim(),
+                                viceResponsible: viceRespCtrl.text.trim(),
+                                meetingPlanning: meetCtrl.text.trim(),
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                setState(() {
+                                  _circleData!['name'] = nameCtrl.text.trim();
+                                  _circleData!['description'] = descCtrl.text.trim();
+                                  _circleData!['country'] = countryCtrl.text.trim();
+                                  _circleData!['city'] = cityCtrl.text.trim();
+                                  _circleData!['responsible'] = respCtrl.text.trim();
+                                  _circleData!['viceResponsible'] = viceRespCtrl.text.trim();
+                                  _circleData!['meetingPlanning'] = meetCtrl.text.trim();
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Circle updated successfully!'), backgroundColor: AppColors.primary),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                setModalState(() => isLoading = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                          child: isLoading 
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Text('Save Changes', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

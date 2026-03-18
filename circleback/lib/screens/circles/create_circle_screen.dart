@@ -21,6 +21,7 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
   // Form controls
   final _formKey = GlobalKey<FormState>();
   final _circleNameController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _countryController = TextEditingController();
   final _cityController = TextEditingController();
   final _responsibleController = TextEditingController();
@@ -32,6 +33,7 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
   @override
   void dispose() {
     _circleNameController.dispose();
+    _descriptionController.dispose();
     _countryController.dispose();
     _cityController.dispose();
     _responsibleController.dispose();
@@ -49,6 +51,7 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
       final service = CircleService();
       await service.createCircle(
         name: _circleNameController.text.trim(),
+        description: _descriptionController.text.trim(),
         country: _countryController.text.trim(),
         city: _cityController.text.trim(),
         responsible: _responsibleController.text.trim(),
@@ -133,6 +136,16 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
                     icon: Icons.groups_rounded,
                     controller: _circleNameController,
                     validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Circle Description
+                  AuthTextField(
+                    label: 'Description (Optional)',
+                    hint: 'Describe the purpose or focus of this circle...',
+                    icon: Icons.description_rounded,
+                    controller: _descriptionController,
+                    maxLines: 4,
                   ),
                   const SizedBox(height: 16),
 
