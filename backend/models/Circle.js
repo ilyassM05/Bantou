@@ -16,13 +16,14 @@ const Circle = {
             responsible,
             vice_responsible,
             meeting_planning,
+            visibility_type = 'Public',
             status = 'Active'
         } = data;
 
         const [result] = await db.query(
             `INSERT INTO circles 
-             (association_id, created_by, name, description, country, city, responsible, vice_responsible, meeting_planning, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (association_id, created_by, name, description, country, city, responsible, vice_responsible, meeting_planning, visibility_type, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 association_id,
                 created_by,
@@ -33,6 +34,7 @@ const Circle = {
                 responsible,
                 vice_responsible,
                 meeting_planning,
+                visibility_type,
                 status
             ]
         );
@@ -64,6 +66,7 @@ const Circle = {
             responsible,
             vice_responsible,
             meeting_planning,
+            visibility_type,
             status
         } = data;
 
@@ -76,6 +79,7 @@ const Circle = {
                  responsible = COALESCE(?, responsible), 
                  vice_responsible = COALESCE(?, vice_responsible), 
                  meeting_planning = COALESCE(?, meeting_planning), 
+                 visibility_type = COALESCE(?, visibility_type),
                  status = COALESCE(?, status)
              WHERE id = ?`,
             [
@@ -86,6 +90,7 @@ const Circle = {
                 responsible,
                 vice_responsible,
                 meeting_planning,
+                visibility_type,
                 status,
                 id
             ]

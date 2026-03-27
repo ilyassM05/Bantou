@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Association = require('../models/Association');
-const { sendOtpEmail, sendAdminInvitationEmail } = require('../config/mailer');
+const { sendOtpEmail, sendAdminInvitationEmail, sendMemberInvitationEmail } = require('../config/mailer');
 
 // ─── JWT helpers ─────────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET || 'bantou_dev_secret_change_in_prod';
@@ -13,7 +13,7 @@ const JWT_EXPIRES = '7d';
 
 function signToken(user) {
     return jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: user.id, email: user.email, name: user.name, role: user.role },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES }
     );
@@ -43,39 +43,66 @@ exports.signup = async (req, res, next) => {
             return res.status(409).json({ error: 'An account with this email already exists.' });
         }
 
-        // ── Invited admin detection via invite token (token-based, reliable) ──
+        // ── Invite token detection (admin_invite OR member_invite) ──
         let invitedAssoc = null;
+        let isInvitedByToken = false;
+        let invitedRole = null; // 'admin' | 'member' | null
+
         if (inviteToken) {
             try {
                 const payload = jwt.verify(inviteToken, JWT_SECRET);
-                if (payload.purpose === 'admin_invite' && payload.associationId) {
-                    const db = require('../config/db');
-                    const [rows] = await db.query(
-                        'SELECT * FROM associations WHERE id = ?',
-                        [payload.associationId]
-                    );
-                    invitedAssoc = rows[0] || null;
-                    console.log(`[SIGNUP] Token-based lookup → assoc: ${invitedAssoc ? invitedAssoc.name : 'NOT FOUND'}`);
+                if (payload.purpose === 'admin_invite' || payload.purpose === 'member_invite') {
+                    isInvitedByToken = true;
+                    invitedRole = payload.purpose === 'member_invite' ? 'member' : 'admin';
+                    // Link to the association stored in the token
+                    if (payload.associationId) {
+                        const db = require('../config/db');
+                        const [rows] = await db.query(
+                            'SELECT * FROM associations WHERE id = ?',
+                            [payload.associationId]
+                        );
+                        invitedAssoc = rows[0] || null;
+                    }
+                    console.log(`[SIGNUP] Valid ${payload.purpose} token. Role: ${invitedRole}. Assoc: ${invitedAssoc ? invitedAssoc.name : 'NONE'}`);
+
+                    // Mark the member_invitation as accepted
+                    if (payload.purpose === 'member_invite' && payload.invitationId) {
+                        const db = require('../config/db');
+                        await db.query(
+                            `UPDATE member_invitations SET status='accepted' WHERE id=?`,
+                            [payload.invitationId]
+                        );
+                    }
                 }
             } catch (e) {
-                // Expired or tampered token — treat as normal signup
-                console.warn('[SIGNUP] Invalid inviteToken, treating as normal signup:', e.message);
+                console.warn('[SIGNUP] Invalid or expired inviteToken:', e.message);
             }
         }
 
-        // Fallback: if no token provided, try email-based lookup (legacy support)
-        if (!invitedAssoc && !inviteToken) {
+        // Fallback email-based lookup only for admin (not member — members MUST have a valid token)
+        if (!invitedAssoc && invitedRole !== 'member') {
             invitedAssoc = await Association.findByAdminEmail(email);
-            console.log(`[SIGNUP] Email-based lookup for "${email}" → assoc: ${invitedAssoc ? invitedAssoc.name : 'NULL'}`);
+            if (invitedAssoc) {
+                invitedRole = invitedRole || 'admin';
+                console.log(`[SIGNUP] Email-based admin match for "${email}" → assoc: ${invitedAssoc.name}`);
+            }
         }
 
-        const role = invitedAssoc ? 'ADMIN' : 'SA';
-        const status = invitedAssoc ? 'actif' : 'en attente';
+        // Final role decision
+        let role, status;
+        if (invitedRole === 'member' && invitedAssoc) {
+            role = 'member'; status = 'actif';
+        } else if (invitedRole === 'admin' || invitedAssoc) {
+            role = 'admin'; status = 'actif';
+        } else {
+            role = 'SA'; status = 'en attente';
+        }
+        console.log(`[SIGNUP] Final Role for "${email}": ${role}`);
 
         const passwordHash = await bcrypt.hash(password, 10);
         const id = await User.create({ name, email, phone, passwordHash, role, status });
 
-        // Link to association if invited
+        // Link to association if invited (admin or member)
         if (invitedAssoc) {
             const db = require('../config/db');
             await db.query(
@@ -85,14 +112,15 @@ exports.signup = async (req, res, next) => {
             await User.markOnboardingSeen(id);
         }
 
-        const token = signToken({ id, email, role });
+        const token = signToken({ id, email, name, role });
         res.status(201).json({
             message: 'Account created successfully.',
             token,
             role,
-            isInvitedAdmin: !!invitedAssoc,
+            isInvitedAdmin: role === 'admin',
+            isMember: role === 'member',
             profileSetupSeen: false,
-            onboardingSeen: !!invitedAssoc,
+            onboardingSeen: !!(invitedAssoc || role === 'member'),
             user: { id, name, email, role },
         });
     } catch (err) {
@@ -139,7 +167,7 @@ exports.login = async (req, res, next) => {
             message: 'Login successful.',
             token,
             role: user.role,
-            isInvitedAdmin: user.role === 'ADMIN',
+            isInvitedAdmin: user.role === 'admin',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
             user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -273,7 +301,7 @@ exports.googleSignIn = async (req, res, next) => {
 
         const existing = await User.findByEmail(email);
         const invitedAssoc = !existing ? await Association.findByAdminEmail(email) : null;
-        const role = invitedAssoc ? 'ADMIN' : 'SA';
+        const role = invitedAssoc ? 'admin' : 'SA';
 
         const user = await User.findOrCreateGoogleUser({ googleId, email, name, role });
 
@@ -292,7 +320,7 @@ exports.googleSignIn = async (req, res, next) => {
             message: 'Google sign-in successful.',
             token,
             role: user.role || role,
-            isInvitedAdmin: (user.role || role) === 'ADMIN',
+            isInvitedAdmin: (user.role || role) === 'admin',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
             user: { id: user.id, name: user.name, email: user.email },
@@ -347,7 +375,7 @@ exports.facebookSignIn = async (req, res, next) => {
 
         const existing = email ? await User.findByEmail(email) : null;
         const invitedAssoc = (!existing && email) ? await Association.findByAdminEmail(email) : null;
-        const role = invitedAssoc ? 'ADMIN' : 'SA';
+        const role = invitedAssoc ? 'admin' : 'SA';
 
         const user = await User.findOrCreateFacebookUser({ facebookId, email, name, role });
 
@@ -366,7 +394,7 @@ exports.facebookSignIn = async (req, res, next) => {
             message: 'Facebook sign-in successful.',
             token,
             role: user.role || role,
-            isInvitedAdmin: (user.role || role) === 'ADMIN',
+            isInvitedAdmin: (user.role || role) === 'admin',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
             user: { id: user.id, name: user.name, email: user.email },
@@ -392,7 +420,7 @@ exports.updateProfile = async (req, res, next) => {
         // Fetch the user to check their current role before upgrading
         const user = await User.findById(userId);
         // Capture the role value NOW (before any DB change) so the response is accurate
-        const wasAdmin = !!(user && user.role === 'ADMIN');
+        const wasAdmin = !!(user && user.role === 'admin');
 
         // If the user was a restricted invited admin, upgrade them to full SA
         if (wasAdmin) {
@@ -513,11 +541,14 @@ exports.createAssociation = async (req, res, next) => {
         const existingAssoc = await Association.findByUserId(userId);
         if (existingAssoc && existingAssoc.admin_emails) {
             const oldAdmins = safeParse(existingAssoc.admin_emails);
+            console.log(`[ASSOC] Found existing assoc: "${existingAssoc.name}". Old admins:`, oldAdmins);
             newlyAddedEmails = cleanAdminEmails.filter(email => !oldAdmins.includes(email));
         } else {
             // First time setting up association, all are new
+            console.log(`[ASSOC] No existing association found for userId: ${userId}`);
             newlyAddedEmails = [...cleanAdminEmails];
         }
+        console.log(`[ASSOC] Newly added emails to invite:`, newlyAddedEmails);
 
         await Association.createOrUpdate(userId, {
             name,
@@ -546,6 +577,13 @@ exports.createAssociation = async (req, res, next) => {
 
         // Send invitations to newly added admins asynchronously
         const generatedInviteTokens = {};
+        // Use the name from the JWT (req.user.name) if available, fallback to DB if missing
+        let inviterName = req.user.name;
+        if (!inviterName) {
+            const inviterUser = await User.findById(userId);
+            inviterName = inviterUser ? inviterUser.name : 'A Bantou User';
+        }
+
         for (const email of newlyAddedEmails) {
             // Generate a signed invite token — includes associationId so signup can
             // look up the association directly without relying on email matching.
@@ -555,8 +593,11 @@ exports.createAssociation = async (req, res, next) => {
                 { expiresIn: '7d' }
             );
             generatedInviteTokens[email] = inviteToken;
-            await sendAdminInvitationEmail(email, req.user.name, name, inviteToken).catch(err => {
-                console.error(`Failed to send invitation to ${email}:`, err);
+            console.log(`[ASSOC] Sending invitation to: ${email} (Inviter: ${inviterName})`);
+            await sendAdminInvitationEmail(email, inviterName, name, inviteToken).then(() => {
+                console.log(`[ASSOC] SUCCESS: Invitation sent to ${email}`);
+            }).catch(err => {
+                console.error(`[ASSOC] ERROR: Failed to send invitation to ${email}:`, err);
             });
         }
 
@@ -626,7 +667,7 @@ exports.validateInviteToken = async (req, res, next) => {
             return res.status(401).json({ error: 'This invitation link has expired or is invalid.' });
         }
 
-        if (payload.purpose !== 'admin_invite' || !payload.email) {
+        if (!['admin_invite', 'member_invite'].includes(payload.purpose) || !payload.email) {
             return res.status(400).json({ error: 'Invalid invitation token.' });
         }
 
@@ -652,6 +693,7 @@ exports.validateInviteToken = async (req, res, next) => {
             email: payload.email,
             associationId: assoc ? assoc.id : null,
             associationName: assoc ? assoc.name : null,
+            role: payload.purpose === 'member_invite' ? 'member' : 'admin',
         });
     } catch (err) {
         next(err);
@@ -730,4 +772,273 @@ exports.inviteRedirect = (req, res) => {
   </script>
 </body>
 </html>`);
+};
+
+// ─── Member Invitation Controllers ───────────────────────────────────────────
+
+/**
+ * POST /auth/invite-member
+ * SA or member invites a new user as a member.
+ * Body: { email, circleId? }
+ * - SA: invitation is sent immediately.
+ * - member: creates a pending invitation that the SA must approve before the email is sent.
+ */
+exports.inviteMember = async (req, res, next) => {
+    try {
+        const inviterId = req.user.id;
+        const inviterRole = req.user.role;
+        const { email, circleId } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required.' });
+        }
+
+        if (!['SA', 'admin', 'member'].includes(inviterRole)) {
+            return res.status(403).json({ error: 'Not authorized to invite members.' });
+        }
+
+        // Check if the invitee already has an account
+        const existing = await User.findByEmail(email.trim().toLowerCase());
+        if (existing) {
+            return res.status(409).json({ error: 'A user with this email already has an account.' });
+        }
+
+        // Find the inviter's association
+        const assoc = await Association.findByUserId(inviterId);
+        if (!assoc) {
+            return res.status(404).json({ error: 'No association found.' });
+        }
+
+        // Look up circle name if circleId provided
+        let circleName = null;
+        if (circleId) {
+            const db = require('../config/db');
+            const [crows] = await db.query('SELECT name FROM circles WHERE id = ?', [circleId]);
+            circleName = crows[0]?.name || null;
+        }
+
+        // Get inviter name
+        let inviterName = req.user.name;
+        if (!inviterName) {
+            const inviterUser = await User.findById(inviterId);
+            inviterName = inviterUser?.name || 'A Bantou User';
+        }
+
+        const db = require('../config/db');
+
+        if (inviterRole === 'SA') {
+            // SA: create invitation record + generate token + send email immediately
+            const [invRow] = await db.query(
+                `INSERT INTO member_invitations (association_id, invited_by, invitee_email, circle_id, token, status)
+                 VALUES (?, ?, ?, ?, '', 'pending')`,
+                [assoc.id, inviterId, email.trim().toLowerCase(), circleId || null]
+            );
+            const invitationId = invRow.insertId;
+
+            const inviteToken = jwt.sign(
+                { email: email.trim().toLowerCase(), associationId: assoc.id, purpose: 'member_invite', invitationId },
+                JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+
+            await db.query('UPDATE member_invitations SET token=?, status=? WHERE id=?',
+                [inviteToken, 'pending', invitationId]);
+
+            await sendMemberInvitationEmail(email.trim().toLowerCase(), inviterName, assoc.name, inviteToken, circleName);
+
+            return res.status(200).json({ message: 'Member invitation sent successfully.' });
+        } else {
+            // Non-SA: create pending invitation — SA must approve before email is sent
+            await db.query(
+                `INSERT INTO member_invitations (association_id, invited_by, invitee_email, circle_id, token, status)
+                 VALUES (?, ?, ?, ?, '', 'pending')`,
+                [assoc.id, inviterId, email.trim().toLowerCase(), circleId || null]
+            );
+            return res.status(200).json({ message: 'Your invitation request has been submitted. It will be sent once the Super Admin approves it.' });
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * GET /auth/sa-dashboard
+ * SA-only. Returns members list, admins list, circles with admin info.
+ */
+exports.getSADashboard = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'SA') {
+            return res.status(403).json({ error: 'Only Super Admins can access this dashboard.' });
+        }
+
+        const assoc = await Association.findByUserId(req.user.id);
+        if (!assoc) {
+            return res.status(404).json({ error: 'No association found.' });
+        }
+
+        const db = require('../config/db');
+
+        // Members (role='member')
+        const [members] = await db.query(
+            `SELECT u.id, u.name, u.email, u.status, u.created_at
+             FROM users u
+             JOIN association_members am ON u.id = am.user_id
+             WHERE am.association_id = ? AND u.role = 'member'
+             ORDER BY u.name`,
+            [assoc.id]
+        );
+
+        // Admins (role='admin' or 'SA')
+        const [admins] = await db.query(
+            `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at
+             FROM users u
+             JOIN association_members am ON u.id = am.user_id
+             WHERE am.association_id = ? AND u.role IN ('SA','admin')
+             ORDER BY u.role, u.name`,
+            [assoc.id]
+        );
+
+        // Circles with responsible admin info
+        const [circles] = await db.query(
+            `SELECT c.id, c.name, c.description, c.city, c.country, c.status,
+                    c.responsible, c.vice_responsible, c.meeting_planning,
+                    u.name AS creator_name, u.email AS creator_email
+             FROM circles c
+             LEFT JOIN users u ON c.created_by = u.id
+             WHERE c.association_id = ?
+             ORDER BY c.name`,
+            [assoc.id]
+        );
+
+        return res.status(200).json({ members, admins, circles, associationName: assoc.name });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * GET /auth/member-invitations/pending
+ * SA-only. Returns pending member invitations (submitted by members, not yet sent).
+ */
+exports.getPendingMemberInvitations = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'SA') {
+            return res.status(403).json({ error: 'Only Super Admins can view pending invitations.' });
+        }
+
+        const assoc = await Association.findByUserId(req.user.id);
+        if (!assoc) {
+            return res.status(404).json({ error: 'No association found.' });
+        }
+
+        const db = require('../config/db');
+        const [rows] = await db.query(
+            `SELECT mi.id, mi.invitee_email, mi.status, mi.created_at, mi.circle_id,
+                    u.name AS inviter_name, u.email AS inviter_email,
+                    c.name AS circle_name
+             FROM member_invitations mi
+             JOIN users u ON mi.invited_by = u.id
+             LEFT JOIN circles c ON mi.circle_id = c.id
+             WHERE mi.association_id = ? AND mi.status = 'pending' AND mi.token = ''
+             ORDER BY mi.created_at DESC`,
+            [assoc.id]
+        );
+
+        return res.status(200).json({ pendingInvitations: rows });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * PUT /auth/member-invitations/:id/respond
+ * SA-only. Approve or reject a pending member invitation (submitted by non-SA members).
+ * Body: { action: 'approve' | 'reject' }
+ */
+exports.respondToMemberInvitation = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'SA') {
+            return res.status(403).json({ error: 'Only Super Admins can respond to invitations.' });
+        }
+
+        const { id } = req.params;
+        const { action } = req.body; // 'approve' | 'reject'
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({ error: 'Action must be approve or reject.' });
+        }
+
+        const assoc = await Association.findByUserId(req.user.id);
+        if (!assoc) return res.status(404).json({ error: 'No association found.' });
+
+        const db = require('../config/db');
+        const [invRows] = await db.query('SELECT * FROM member_invitations WHERE id = ?', [id]);
+        const invitation = invRows[0];
+        if (!invitation) return res.status(404).json({ error: 'Invitation not found.' });
+        if (invitation.association_id !== assoc.id) {
+            return res.status(403).json({ error: 'Not authorized.' });
+        }
+
+        if (action === 'reject') {
+            await db.query('UPDATE member_invitations SET status=? WHERE id=?', ['rejected', id]);
+            return res.status(200).json({ message: 'Invitation rejected.' });
+        }
+
+        // approve: generate token and send the email
+        const inviterUser = await User.findById(req.user.id);
+        const inviterName = inviterUser?.name || 'Super Admin';
+
+        // Look up circle name
+        let circleName = null;
+        if (invitation.circle_id) {
+            const [crows] = await db.query('SELECT name FROM circles WHERE id=?', [invitation.circle_id]);
+            circleName = crows[0]?.name || null;
+        }
+
+        const inviteToken = jwt.sign(
+            { email: invitation.invitee_email, associationId: assoc.id, purpose: 'member_invite', invitationId: invitation.id },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        await db.query('UPDATE member_invitations SET token=?, status=? WHERE id=?',
+            [inviteToken, 'pending', id]);
+
+        await sendMemberInvitationEmail(invitation.invitee_email, inviterName, assoc.name, inviteToken, circleName);
+
+        return res.status(200).json({ message: 'Invitation approved and email sent.' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * GET /auth/association/members
+ * Returns a list of members in the user's association.
+ * SA or Admin only.
+ */
+exports.getAssociationMembers = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'SA' && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only SA and Admins can view association members.' });
+        }
+
+        const assoc = await Association.findByUserId(req.user.id);
+        if (!assoc) {
+            return res.status(404).json({ error: 'No association found.' });
+        }
+
+        const db = require('../config/db');
+        const [members] = await db.query(
+            `SELECT u.id, u.name, u.email, u.role, u.status 
+             FROM users u 
+             JOIN association_members am ON u.id = am.user_id 
+             WHERE am.association_id = ?`,
+            [assoc.id]
+        );
+
+        res.status(200).json(members);
+    } catch (err) {
+        next(err);
+    }
 };

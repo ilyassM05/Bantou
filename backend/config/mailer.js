@@ -1,6 +1,13 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+console.log(`[MAILER] Initializing with user: ${process.env.EMAIL_USER}`);
+if (!process.env.EMAIL_PASS) {
+    console.error('[MAILER] ERROR: EMAIL_PASS is missing in .env');
+} else {
+    console.log(`[MAILER] EMAIL_PASS length: ${process.env.EMAIL_PASS.length}`);
+}
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -8,6 +15,15 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS,
     },
 });
+
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('[MAILER] Transporter validation failed:', error);
+    } else {
+        console.log('[MAILER] SUCCESS: Transporter is ready to take messages');
+    }
+});
+
 
 /**
  * Send a 6-digit OTP to the user's email address.
@@ -112,4 +128,63 @@ async function sendAdminInvitationEmail(to, inviterName, associationName, invite
     await transporter.sendMail(mailOptions);
 }
 
-module.exports = { sendOtpEmail, sendAdminInvitationEmail };
+/**
+ * Send an invitation email to a newly invited association member.
+ * @param {string} to - recipient email
+ * @param {string} inviterName - name of the user who invited them
+ * @param {string} associationName - name of the association
+ * @param {string} inviteToken - signed JWT for the deep link
+ * @param {string|null} circleName - optional circle name when invited to join a specific circle
+ */
+async function sendMemberInvitationEmail(to, inviterName, associationName, inviteToken, circleName = null) {
+    const host = process.env.SERVER_HOST || '10.0.2.2';
+    const port = process.env.PORT || 3000;
+    const redirectUrl = `http://${host}:${port}/auth/invite-redirect/${inviteToken}`;
+
+    const circleBlurb = circleName
+        ? `<p style="color: #6B5020; font-size: 14px; line-height: 1.6;">You are also being invited to join the <strong>${circleName}</strong> circle.</p>`
+        : '';
+
+    const mailOptions = {
+        from: `"Bantou App" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: `You have been invited to join ${associationName} on Bantou as a Member`,
+        html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #fffbf0; border-radius: 16px; overflow: hidden; border: 1px solid #f0e0b0;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #C9A84C, #8B6914); padding: 32px 24px; text-align: center;">
+                <h1 style="color: #fff; margin: 0; font-size: 26px; letter-spacing: 1px;">Bantou</h1>
+                <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0; font-size: 13px;">Je suis parce que nous sommes</p>
+            </div>
+            <!-- Body -->
+            <div style="padding: 32px 28px; text-align: center;">
+                <h2 style="color: #3D2B00; margin-top: 0; font-size: 20px;">Member Invitation</h2>
+                <p style="color: #6B5020; font-size: 15px; line-height: 1.6;">
+                    Hello! <strong>${inviterName}</strong> has invited you to join <strong>${associationName}</strong> on Bantou as a <strong>Member</strong>.
+                </p>
+                ${circleBlurb}
+                <div style="margin: 24px 0;">
+                    <a href="${redirectUrl}" style="background: #C9A84C; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: bold; font-size: 16px; display: inline-block;">
+                        Accept &amp; Sign Up as Member
+                    </a>
+                </div>
+                <p style="color: #888; font-size: 12px; margin-top: 4px;">
+                    Tap the button above on your mobile device. It will open the Bantou app directly.<br/>
+                    <span style="font-size: 11px; color: #aaa;">If prompted, choose to open in Bantou.</span>
+                </p>
+                <p style="color: #888; font-size: 13px; margin-top: 16px;">
+                    This invitation expires in <strong>7 days</strong>. If you don't know who invited you, please ignore this email.
+                </p>
+            </div>
+            <!-- Footer -->
+            <div style="background: #f5e9c8; padding: 16px; text-align: center;">
+                <p style="color: #b0904a; font-size: 11px; margin: 0;">© 2026 Bantou. All rights reserved.</p>
+            </div>
+        </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+}
+
+module.exports = { sendOtpEmail, sendAdminInvitationEmail, sendMemberInvitationEmail };

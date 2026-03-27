@@ -201,6 +201,62 @@ class AppLocalizations {
       'cdViceResponsibleSmall': 'Vice-Responsible',
       'cdNoAssoc': 'No Association Attached',
 
+      // Create Circle & Circle Details
+      'cdCreateCircleTitle': 'Create Circle',
+      'cdCircleDetailsTitle': 'Circle Details',
+      'cdDescriptionOptional': 'Description (Optional)',
+      'cdDescriptionHintText': 'Describe the purpose or focus of this circle...',
+      'cdVisibilityAccess': 'Visibility & Access',
+      'cdPublic': 'Public',
+      'cdPrivate': 'Private',
+      'cdInviteMembers': 'Invite Members',
+      'cdSearchAddMembers': 'Search and add members',
+      'cdLeadership': 'Leadership',
+      'cdSchedule': 'Schedule',
+      'cdCircleSavedSuccess': 'Circle saved successfully!',
+      'cdAddMember': 'Add Member',
+      'cdSearchNameEmail': 'Search by name or email',
+      'cdCancel': 'Cancel',
+      'cdNoMembersFound': 'No members found.',
+      'cdUnknownCircle': 'Unknown Circle',
+      'cdNoDescriptionProvided': 'No description provided.',
+      'cdCircleLeadership': 'Circle Leadership',
+      'cdUpcomingMeetings': 'Upcoming Meetings',
+      'cdViewCalendar': 'View Calendar',
+      'cdNextSync': 'Next Sync',
+      'cdMeetingGallery': 'Meeting Gallery',
+      'cdAddPhoto': 'Add Photo',
+      'cdNoPhotosYet': 'No photos yet',
+      'cdTakeFirstSnapshot': 'Take the first snapshot of your meeting!',
+      'cdPhotoUploadedSuccess': 'Photo uploaded directly to gallery!',
+      'cdCircleParticipants': 'Circle Participants',
+      'cdViewAll': 'View All',
+      'cdManageParticipation': 'Manage Participation',
+      'cdSeeWhoJoined': 'See who has joined this circle',
+      'cdEditCircle': 'Edit Circle',
+      'cdCircleUpdatedSuccess': 'Circle updated successfully!',
+      'cdJoined': 'Joined',
+      'cdNotJoined': 'Not Joined',
+      'prTitle': 'Pending Requests',
+      'prNoRequests': 'No pending requests.',
+      'prAdmin': 'Admin',
+      'prReject': 'Reject',
+      'prApprove': 'Approve',
+      'prRequestAction': 'Request {status}',
+      'cdRequestsBtn': 'Requests',
+      'cdInviteToCircle': 'Invite to {name}',
+      'cdEmailAddress': 'Email address',
+      'cdSend': 'Send',
+      'cdInviteAppMember': 'Invite App Member',
+      'cdSendInvite': 'Send Invite',
+      'cdInviteToCircleBtn': 'Invite to Circle',
+      'cdInviteBtn': 'Invite',
+      'cdParticipateBtn': 'Participate',
+      'cdLeaveBtn': 'Leave',
+      'cdJoinBtn': 'Join',
+      'cdPendingApproval': 'Pending Approval',
+      'cdRequestAccess': 'Request Access',
+      'cdMemberOfCircle': 'You are a member of this circle',
     },
 
     // ── French ───────────────────────────────────────────────────────────
@@ -380,6 +436,62 @@ class AppLocalizations {
       'cdViceResponsibleSmall': 'Vice-Responsable',
       'cdNoAssoc': 'Aucune association liée',
 
+      // Create Circle & Circle Details
+      'cdCreateCircleTitle': 'Créer un Cercle',
+      'cdCircleDetailsTitle': 'Détails du Cercle',
+      'cdDescriptionOptional': 'Description (Optionnelle)',
+      'cdDescriptionHintText': 'Décrivez le but ou l\'objectif de ce cercle...',
+      'cdVisibilityAccess': 'Visibilité et Accès',
+      'cdPublic': 'Public',
+      'cdPrivate': 'Privé',
+      'cdInviteMembers': 'Inviter des Membres',
+      'cdSearchAddMembers': 'Rechercher et ajouter des membres',
+      'cdLeadership': 'Leadership',
+      'cdSchedule': 'Calendrier',
+      'cdCircleSavedSuccess': 'Cercle enregistré avec succès !',
+      'cdAddMember': 'Ajouter un membre',
+      'cdSearchNameEmail': 'Rechercher par nom ou email',
+      'cdCancel': 'Annuler',
+      'cdNoMembersFound': 'Aucun membre trouvé.',
+      'cdUnknownCircle': 'Cercle inconnu',
+      'cdNoDescriptionProvided': 'Aucune description fournie.',
+      'cdCircleLeadership': 'Leadership du Cercle',
+      'cdUpcomingMeetings': 'Prochaines réunions',
+      'cdViewCalendar': 'Voir le calendrier',
+      'cdNextSync': 'Prochaine synchro',
+      'cdMeetingGallery': 'Galerie de réunions',
+      'cdAddPhoto': 'Ajouter une photo',
+      'cdNoPhotosYet': 'Pas encore de photos',
+      'cdTakeFirstSnapshot': 'Prenez la première photo de votre réunion !',
+      'cdPhotoUploadedSuccess': 'Photo téléchargée dans la galerie !',
+      'cdCircleParticipants': 'Participants du Cercle',
+      'cdViewAll': 'Voir tout',
+      'cdManageParticipation': 'Gérer la participation',
+      'cdSeeWhoJoined': 'Voir qui a rejoint ce cercle',
+      'cdEditCircle': 'Modifier le Cercle',
+      'cdCircleUpdatedSuccess': 'Cercle mis à jour avec succès !',
+      'cdJoined': 'Rejoint',
+      'cdNotJoined': 'Non rejoint',
+      'prTitle': 'Demandes en attente',
+      'prNoRequests': 'Aucune demande en attente.',
+      'prAdmin': 'Admin',
+      'prReject': 'Rejeter',
+      'prApprove': 'Approuver',
+      'prRequestAction': 'Demande {status}',
+      'cdRequestsBtn': 'Demandes',
+      'cdInviteToCircle': 'Inviter à {name}',
+      'cdEmailAddress': 'Adresse e-mail',
+      'cdSend': 'Envoyer',
+      'cdInviteAppMember': 'Inviter un membre de l\'application',
+      'cdSendInvite': 'Envoyer l\'invitation',
+      'cdInviteToCircleBtn': 'Inviter au cercle',
+      'cdInviteBtn': 'Inviter',
+      'cdParticipateBtn': 'Participer',
+      'cdLeaveBtn': 'Quitter',
+      'cdJoinBtn': 'Rejoindre',
+      'cdPendingApproval': 'En attente d\'approbation',
+      'cdRequestAccess': 'Demander l\'accès',
+      'cdMemberOfCircle': 'Vous êtes membre de ce cercle',
     },
 
     // ── Spanish ──────────────────────────────────────────────────────────
@@ -558,6 +670,62 @@ class AppLocalizations {
       'cdViceResponsibleSmall': 'Vice-Responsable',
       'cdNoAssoc': 'Ninguna asociación adjunta',
 
+      // Create Circle & Circle Details
+      'cdCreateCircleTitle': 'Crear Círculo',
+      'cdCircleDetailsTitle': 'Detalles del Círculo',
+      'cdDescriptionOptional': 'Descripción (Opcional)',
+      'cdDescriptionHintText': 'Describe el propósito o enfoque de este círculo...',
+      'cdVisibilityAccess': 'Visibilidad y Acceso',
+      'cdPublic': 'Público',
+      'cdPrivate': 'Privado',
+      'cdInviteMembers': 'Invitar Miembros',
+      'cdSearchAddMembers': 'Buscar y agregar miembros',
+      'cdLeadership': 'Liderazgo',
+      'cdSchedule': 'Horario',
+      'cdCircleSavedSuccess': '¡Círculo guardado con éxito!',
+      'cdAddMember': 'Agregar miembro',
+      'cdSearchNameEmail': 'Buscar por nombre o correo',
+      'cdCancel': 'Cancelar',
+      'cdNoMembersFound': 'No se encontraron miembros.',
+      'cdUnknownCircle': 'Círculo desconocido',
+      'cdNoDescriptionProvided': 'No se proporcionó descripción.',
+      'cdCircleLeadership': 'Liderazgo del Círculo',
+      'cdUpcomingMeetings': 'Próximas reuniones',
+      'cdViewCalendar': 'Ver calendario',
+      'cdNextSync': 'Próxima síncrono',
+      'cdMeetingGallery': 'Galería de reuniones',
+      'cdAddPhoto': 'Agregar foto',
+      'cdNoPhotosYet': 'Aún no hay fotos',
+      'cdTakeFirstSnapshot': '¡Toma la primera foto de tu reunión!',
+      'cdPhotoUploadedSuccess': '¡Foto subida a la galería!',
+      'cdCircleParticipants': 'Participantes del Círculo',
+      'cdViewAll': 'Ver todo',
+      'cdManageParticipation': 'Gestionar participación',
+      'cdSeeWhoJoined': 'Mira quién se ha unido a este círculo',
+      'cdEditCircle': 'Editar Círculo',
+      'cdCircleUpdatedSuccess': '¡Círculo actualizado con éxito!',
+      'cdJoined': 'Unido',
+      'cdNotJoined': 'No se unió',
+      'prTitle': 'Solicitudes pendientes',
+      'prNoRequests': 'No hay solicitudes pendientes.',
+      'prAdmin': 'Admin',
+      'prReject': 'Rechazar',
+      'prApprove': 'Aprobar',
+      'prRequestAction': 'Solicitud {status}',
+      'cdRequestsBtn': 'Solicitudes',
+      'cdInviteToCircle': 'Invitar a {name}',
+      'cdEmailAddress': 'Dirección de correo',
+      'cdSend': 'Enviar',
+      'cdInviteAppMember': 'Invitar miembro de la app',
+      'cdSendInvite': 'Enviar Invitación',
+      'cdInviteToCircleBtn': 'Invitar al círculo',
+      'cdInviteBtn': 'Invitar',
+      'cdParticipateBtn': 'Participar',
+      'cdLeaveBtn': 'Salir',
+      'cdJoinBtn': 'Unirse',
+      'cdPendingApproval': 'Aprobación pendiente',
+      'cdRequestAccess': 'Solicitar acceso',
+      'cdMemberOfCircle': 'Eres miembro de este círculo',
     },
 
     // ── Arabic ───────────────────────────────────────────────────────────
@@ -736,6 +904,62 @@ class AppLocalizations {
       'cdViceResponsibleSmall': 'نائب المسؤول',
       'cdNoAssoc': 'لا توجد جمعية مرتبطة',
 
+      // Create Circle & Circle Details
+      'cdCreateCircleTitle': 'إنشاء دائرة',
+      'cdCircleDetailsTitle': 'تفاصيل الدائرة',
+      'cdDescriptionOptional': 'الوصف (اختياري)',
+      'cdDescriptionHintText': 'صف الغرض من هذه الدائرة...',
+      'cdVisibilityAccess': 'الرؤية والوصول',
+      'cdPublic': 'عام',
+      'cdPrivate': 'خاص',
+      'cdInviteMembers': 'دعوة الأعضاء',
+      'cdSearchAddMembers': 'البحث وإضافة أعضاء',
+      'cdLeadership': 'القيادة',
+      'cdSchedule': 'الجدول الزمني',
+      'cdCircleSavedSuccess': 'تم حفظ الدائرة بنجاح!',
+      'cdAddMember': 'إضافة عضو',
+      'cdSearchNameEmail': 'البحث بالاسم أو البريد الإلكتروني',
+      'cdCancel': 'إلغاء',
+      'cdNoMembersFound': 'لم يتم العثور على أعضاء.',
+      'cdUnknownCircle': 'دائرة غير معروفة',
+      'cdNoDescriptionProvided': 'لم يتم تقديم وصف.',
+      'cdCircleLeadership': 'قيادة الدائرة',
+      'cdUpcomingMeetings': 'الاجتماعات القادمة',
+      'cdViewCalendar': 'عرض التقويم',
+      'cdNextSync': 'المزامنة التالية',
+      'cdMeetingGallery': 'معرض الاجتماعات',
+      'cdAddPhoto': 'إضافة صورة',
+      'cdNoPhotosYet': 'لا توجد صور بعد',
+      'cdTakeFirstSnapshot': 'التقط أول صورة لاجتماعك!',
+      'cdPhotoUploadedSuccess': 'تم رفع الصورة إلى المعرض بنجاح!',
+      'cdCircleParticipants': 'المشاركون في الدائرة',
+      'cdViewAll': 'عرض الكل',
+      'cdManageParticipation': 'إدارة المشاركة',
+      'cdSeeWhoJoined': 'شاهد من انضم إلى هذه الدائرة',
+      'cdEditCircle': 'تعديل الدائرة',
+      'cdCircleUpdatedSuccess': 'تم تحديث الدائرة بنجاح!',
+      'cdJoined': 'انضم',
+      'cdNotJoined': 'لم ينضم',
+      'prTitle': 'الطلبات المعلقة',
+      'prNoRequests': 'لا توجد طلبات معلقة.',
+      'prAdmin': 'المسؤول',
+      'prReject': 'رفض',
+      'prApprove': 'موافقة',
+      'prRequestAction': 'تم {status} الطلب',
+      'cdRequestsBtn': 'الطلبات',
+      'cdInviteToCircle': 'دعوة إلى {name}',
+      'cdEmailAddress': 'البريد الإلكتروني',
+      'cdSend': 'إرسال',
+      'cdInviteAppMember': 'دعوة عضو جديد',
+      'cdSendInvite': 'إرسال الدعوة',
+      'cdInviteToCircleBtn': 'دعوة إلى الدائرة',
+      'cdInviteBtn': 'دعوة',
+      'cdParticipateBtn': 'مشاركة',
+      'cdLeaveBtn': 'مغادرة',
+      'cdJoinBtn': 'انضمام',
+      'cdPendingApproval': 'في انتظار الموافقة',
+      'cdRequestAccess': 'طلب انضمام',
+      'cdMemberOfCircle': 'أنت عضو في هذه الدائرة',
     },
   };
 
@@ -926,6 +1150,87 @@ class AppLocalizations {
         _translations[locale.languageCode]?['psAvatarTooltips'] ??
         _translations['en']!['psAvatarTooltips'];
     return (val as List<dynamic>?)?.cast<String>() ?? [];
+  }
+
+  // Create Circle & Circle Details
+  String get cdCreateCircleTitle => _t('cdCreateCircleTitle');
+  String get cdCircleDetailsTitle => _t('cdCircleDetailsTitle');
+  String get cdDescriptionOptional => _t('cdDescriptionOptional');
+  String get cdDescriptionHintText => _t('cdDescriptionHintText');
+  String get cdVisibilityAccess => _t('cdVisibilityAccess');
+  String get cdPublic => _t('cdPublic');
+  String get cdPrivate => _t('cdPrivate');
+  String get cdInviteMembers => _t('cdInviteMembers');
+  String get cdSearchAddMembers => _t('cdSearchAddMembers');
+  String get cdLeadership => _t('cdLeadership');
+  String get cdSchedule => _t('cdSchedule');
+  String get cdCircleSavedSuccess => _t('cdCircleSavedSuccess');
+  String get cdAddMember => _t('cdAddMember');
+  String get cdSearchNameEmail => _t('cdSearchNameEmail');
+  String get cdCancel => _t('cdCancel');
+  String get cdNoMembersFound => _t('cdNoMembersFound');
+  String get cdUnknownCircle => _t('cdUnknownCircle');
+  String get cdNoDescriptionProvided => _t('cdNoDescriptionProvided');
+  String get cdCircleLeadership => _t('cdCircleLeadership');
+  String get cdUpcomingMeetings => _t('cdUpcomingMeetings');
+  String get cdViewCalendar => _t('cdViewCalendar');
+  String get cdNextSync => _t('cdNextSync');
+  String get cdMeetingGallery => _t('cdMeetingGallery');
+  String get cdAddPhoto => _t('cdAddPhoto');
+  String get cdNoPhotosYet => _t('cdNoPhotosYet');
+  String get cdTakeFirstSnapshot => _t('cdTakeFirstSnapshot');
+  String get cdPhotoUploadedSuccess => _t('cdPhotoUploadedSuccess');
+  String get cdCircleParticipants => _t('cdCircleParticipants');
+  String get cdViewAll => _t('cdViewAll');
+  String get cdManageParticipation => _t('cdManageParticipation');
+  String get cdSeeWhoJoined => _t('cdSeeWhoJoined');
+  String get cdEditCircle => _t('cdEditCircle');
+  String get cdCircleUpdatedSuccess => _t('cdCircleUpdatedSuccess');
+  String get cdJoined => _t('cdJoined');
+  String get cdNotJoined => _t('cdNotJoined');
+
+  // Pending Requests
+  String get prTitle => _t('prTitle');
+  String get prNoRequests => _t('prNoRequests');
+  String get prAdmin => _t('prAdmin');
+  String get prReject => _t('prReject');
+  String get prApprove => _t('prApprove');
+  String prRequestAction(String status) {
+    if (locale.languageCode == 'ar') {
+      final st = status == 'Approved' ? 'الموافقة على' : 'رفض';
+      return _t('prRequestAction').replaceAll('{status}', st);
+    } else if (locale.languageCode == 'fr') {
+      final st = status == 'Approved' ? 'approuvée' : 'rejetée';
+      return _t('prRequestAction').replaceAll('{status}', st);
+    } else if (locale.languageCode == 'es') {
+      final st = status == 'Approved' ? 'aprobada' : 'rechazada';
+      return _t('prRequestAction').replaceAll('{status}', st);
+    }
+    return _t('prRequestAction').replaceAll('{status}', status);
+  }
+
+  // Dashboard missing
+  String get cdRequestsBtn => _t('cdRequestsBtn');
+  String cdInviteToCircle(String name) => _t('cdInviteToCircle').replaceAll('{name}', name);
+  String get cdEmailAddress => _t('cdEmailAddress');
+  String get cdSend => _t('cdSend');
+  String get cdInviteAppMember => _t('cdInviteAppMember');
+  String get cdSendInvite => _t('cdSendInvite');
+  String get cdInviteToCircleBtn => _t('cdInviteToCircleBtn');
+  String get cdInviteBtn => _t('cdInviteBtn');
+  String get cdParticipateBtn => _t('cdParticipateBtn');
+  String get cdLeaveBtn => _t('cdLeaveBtn');
+  String get cdJoinBtn => _t('cdJoinBtn');
+  String get cdPendingApproval => _t('cdPendingApproval');
+  String get cdRequestAccess => _t('cdRequestAccess');
+  String get cdMemberOfCircle => _t('cdMemberOfCircle');
+
+  // Dynamic enum translation
+  String translateStatus(String status) {
+    if (status == 'Active') return cdActive;
+    if (status == 'Public') return cdPublic;
+    if (status == 'Private') return cdPrivate;
+    return status;
   }
 }
 

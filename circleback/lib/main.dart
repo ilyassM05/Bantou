@@ -12,9 +12,12 @@ import 'screens/auth/profile_setup_screen.dart';
 import 'screens/auth/create_association_screen.dart';
 import 'screens/auth/edit_profile_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/home/sa_dashboard_screen.dart';
+import 'screens/main_shell_screen.dart';
 import 'screens/circles/circle_dashboard_screen.dart';
 import 'screens/circles/create_circle_screen.dart';
 import 'screens/circles/circle_details_screen.dart';
+import 'screens/circles/member_circles_screen.dart';
 import 'services/http_auth_service.dart';
 
 void main() async {
@@ -152,9 +155,12 @@ class _BantouAppState extends State<BantouApp> {
           ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
           EditProfileScreen.routeName: (_) => const EditProfileScreen(),
           HomeScreen.routeName: (_) => const HomeScreen(),
+          SaDashboardScreen.routeName: (_) => const SaDashboardScreen(),
+          MainShellScreen.routeName: (_) => const MainShellScreen(),
           CircleDashboardScreen.routeName: (_) => const CircleDashboardScreen(),
           CreateCircleScreen.routeName: (_) => const CreateCircleScreen(),
           CircleDetailsScreen.routeName: (_) => const CircleDetailsScreen(),
+          MemberCirclesScreen.routeName: (_) => const MemberCirclesScreen(),
         },
       ),
     );

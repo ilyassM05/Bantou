@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../services/circle_service.dart';
+import '../../services/http_auth_service.dart';
 
 /// Screen representing the details of a specific Circle.
 class CircleDetailsScreen extends StatefulWidget {
@@ -16,6 +21,8 @@ class CircleDetailsScreen extends StatefulWidget {
 
 class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
   Map<String, dynamic>? _circleData;
+  bool _isUploadingPhoto = false;
+  List<dynamic> _photos = [];
 
   @override
   void didChangeDependencies() {
@@ -24,6 +31,54 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is Map<String, dynamic>) {
         _circleData = args;
+        _fetchPhotos();
+      }
+    }
+  }
+
+  Future<void> _fetchPhotos() async {
+    try {
+      final photos = await CircleService().getCirclePhotos(_circleData!['id'] as int);
+      if (mounted) {
+        setState(() {
+          _photos = photos;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load photos: $e');
+    }
+  }
+
+  Future<void> _takeAndUploadPhoto() async {
+    if (_isUploadingPhoto) return;
+    
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+    
+    try {
+      await CircleService().uploadCirclePhoto(_circleData!['id'] as int, image.path);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).cdPhotoUploadedSuccess), backgroundColor: AppColors.primary),
+        );
+        _fetchPhotos();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
       }
     }
   }
@@ -34,7 +89,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
       backgroundColor: AppColors.gradientStart,
       appBar: AppBar(
         title: Text(
-          'Circle Details',
+          AppLocalizations.of(context).cdCircleDetailsTitle,
           style: GoogleFonts.inter(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
@@ -67,6 +122,15 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
             const SizedBox(height: 32),
             _buildMeetingsSection(),
             const SizedBox(height: 32),
+            _buildPhotosSection(),
+            if (HttpAuthService.currentUserRole == 'SA' || 
+                HttpAuthService.currentUserRole == 'admin' || 
+                HttpAuthService.currentIsInvitedAdmin ||
+                _circleData?['isAdmin'] == true) ...[
+              const SizedBox(height: 32),
+              _buildParticipantsSection(),
+            ],
+            const SizedBox(height: 32),
             // Grey box at the bottom as seen in mockup
             Container(
               height: 100,
@@ -82,10 +146,10 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
   }
 
   Widget _buildHeaderInfo(BuildContext context) {
-    final title = _circleData?['name'] ?? 'Unknown Circle';
+    final title = _circleData?['name'] ?? AppLocalizations.of(context).cdUnknownCircle;
     final location = '${_circleData?['city'] ?? ''}, ${_circleData?['country'] ?? ''}'.trim();
-    final status = _circleData?['status'] ?? 'Active';
-    final isActive = status.toLowerCase() == 'active';
+    final status = _circleData?['status'] ?? AppLocalizations.of(context).cdActive;
+    final isActive = status.toLowerCase() == 'active' || status.toLowerCase() == 'actif' || status.toLowerCase() == 'activo' || status == AppLocalizations.of(context).cdActive;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,7 +202,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          _circleData?['description'] ?? 'No description provided.',
+          _circleData?['description'] ?? AppLocalizations.of(context).cdNoDescriptionProvided,
           style: GoogleFonts.inter(
             fontSize: 14,
             height: 1.5,
@@ -157,7 +221,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Circle Leadership',
+          AppLocalizations.of(context).cdCircleLeadership,
           style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -170,7 +234,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
             Expanded(
               child: _buildLeaderCard(
                 name: responsible,
-                role: 'Responsible',
+                role: AppLocalizations.of(context).cdResponsibleSmall,
                 color: const Color(0xFF2962FF), // Blue
               ),
             ),
@@ -178,7 +242,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
             Expanded(
               child: _buildLeaderCard(
                 name: viceResponsible,
-                role: 'Vice-Responsible',
+                role: AppLocalizations.of(context).cdViceResponsibleSmall,
                 color: const Color(0xFFFF9100), // Orange
               ),
             ),
@@ -257,7 +321,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Upcoming Meetings',
+              AppLocalizations.of(context).cdUpcomingMeetings,
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -272,7 +336,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                'View Calendar',
+                AppLocalizations.of(context).cdViewCalendar,
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: const Color(0xFF4285F4),
@@ -285,7 +349,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         _buildMeetingCard(
           month: 'TBD',
           day: '??',
-          title: 'Next Sync',
+          title: AppLocalizations.of(context).cdNextSync,
           time: meetingTime,
         ),
       ],
@@ -373,6 +437,231 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     );
   }
 
+  Widget _buildPhotosSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              AppLocalizations.of(context).cdMeetingGallery,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+              ),
+            ),
+            if (_isUploadingPhoto)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              TextButton.icon(
+                onPressed: _takeAndUploadPhoto,
+                icon: const Icon(Icons.camera_alt, size: 16, color: Color(0xFF4285F4)),
+                label: Text(
+                  AppLocalizations.of(context).cdAddPhoto,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: const Color(0xFF4285F4),
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_photos.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.photo_library_outlined, size: 32, color: AppColors.textSecondary),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(context).cdNoPhotosYet,
+                  style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of(context).cdTakeFirstSnapshot,
+                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 120,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _photos.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final photoUrl = 'http://10.0.2.2:3000${_photos[index]['photo_url']}';
+                final uploader = _photos[index]['uploader_name'] ?? 'Someone';
+                return Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        photoUrl,
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Container(
+                          width: 120,
+                          height: 120,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+                        ),
+                        child: Text(
+                          uploader,
+                          style: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildParticipantsSection() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              AppLocalizations.of(context).cdCircleParticipants,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => _CircleParticipantsModal(circleId: _circleData!['id'] as int),
+                );
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                AppLocalizations.of(context).cdViewAll,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: const Color(0xFF4285F4),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderSoft),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => _CircleParticipantsModal(circleId: _circleData!['id'] as int),
+                );
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8EAF6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.people_alt, color: Color(0xFF3F51B5)),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context).cdManageParticipation,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            AppLocalizations.of(context).cdSeeWhoJoined,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showEditModal() {
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(text: _circleData?['name']);
@@ -412,7 +701,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Edit Circle',
+                        AppLocalizations.of(context).cdEditCircle,
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -520,7 +809,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                                   _circleData!['meetingPlanning'] = meetCtrl.text.trim();
                                 });
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Circle updated successfully!'), backgroundColor: AppColors.primary),
+                                  SnackBar(content: Text(AppLocalizations.of(context).cdCircleUpdatedSuccess), backgroundColor: AppColors.primary),
                                 );
                               }
                             } catch (e) {
@@ -534,7 +823,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                           },
                           child: isLoading 
                             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : Text('Save Changes', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                            : Text(AppLocalizations.of(context).cdSaveBtn, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -549,3 +838,155 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     );
   }
 }
+
+class _CircleParticipantsModal extends StatefulWidget {
+  final int circleId;
+  const _CircleParticipantsModal({required this.circleId});
+
+  @override
+  State<_CircleParticipantsModal> createState() => _CircleParticipantsModalState();
+}
+
+class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
+  bool _isLoading = true;
+  String? _error;
+  List<dynamic> _participants = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchParticipants();
+  }
+
+  Future<void> _fetchParticipants() async {
+    try {
+      final participants = await CircleService().getCircleParticipants(widget.circleId);
+      if (mounted) {
+        setState(() {
+          _participants = participants;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, controller) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.cardSurface,
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(AppLocalizations.of(context).cdCircleParticipants, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+              ),
+              const Divider(),
+              Expanded(
+                child: _isLoading 
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null 
+                    ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+                    : _participants.isEmpty 
+                      ? Center(child: Text(AppLocalizations.of(context).cdNoMembersFound))
+                      : ListView.separated(
+                          controller: controller,
+                          padding: const EdgeInsets.all(24),
+                          itemCount: _participants.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (ctx, i) {
+                            final p = _participants[i];
+                            final name = p['name'] ?? 'Unknown';
+                            final hasJoined = p['hasJoined'] == true;
+                            final joinedAtStr = p['joinedAt'] as String?;
+                            
+                            String joinedDate = '';
+                            if (hasJoined && joinedAtStr != null) {
+                              try {
+                                final dt = DateTime.parse(joinedAtStr);
+                                joinedDate = DateFormat('MMM d, yyyy').format(dt);
+                              } catch (_) {}
+                            }
+
+                            final initials = name.trim().isNotEmpty ? name.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase() : '?';
+                            
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: AppColors.borderSoft),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                    child: Text(initials, style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                        if (hasJoined && joinedDate.isNotEmpty)
+                                          Text('Joined $joinedDate', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: hasJoined ? const Color(0xFFE6F4EA) : const Color(0xFFF1F3F4),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: hasJoined ? const Color(0xFFCEEAD6) : const Color(0xFFDADCE0)),
+                                    ),
+                                    child: Text(
+                                      hasJoined ? AppLocalizations.of(context).cdJoined : AppLocalizations.of(context).cdNotJoined,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: hasJoined ? const Color(0xFF137333) : const Color(0xFF5F6368),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+

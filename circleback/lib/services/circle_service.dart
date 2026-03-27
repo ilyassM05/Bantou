@@ -17,6 +17,8 @@ class CircleService {
     required String responsible,
     required String viceResponsible,
     required String meetingPlanning,
+    String visibilityType = 'Public',
+    List<int> initialMembers = const [],
   }) async {
     try {
       final token = await _getToken();
@@ -36,6 +38,8 @@ class CircleService {
           'responsible': responsible,
           'viceResponsible': viceResponsible,
           'meetingPlanning': meetingPlanning,
+          'visibilityType': visibilityType,
+          'initialMembers': initialMembers,
         }),
       );
 
@@ -72,6 +76,72 @@ class CircleService {
       }
     } catch (e) {
       throw Exception('Fetch circles failed: $e');
+    }
+  }
+
+  Future<List<dynamic>> getCircleParticipants(int circleId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/$circleId/participants'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return data['participants'] as List<dynamic>;
+      } else {
+        throw Exception(data['error'] ?? 'Failed to fetch circle participants');
+      }
+    } catch (e) {
+      throw Exception('Fetch participants failed: $e');
+    }
+  }
+
+  Future<List<dynamic>> getCirclePhotos(int circleId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/$circleId/photos'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return data['photos'] as List<dynamic>;
+      } else {
+        throw Exception(data['error'] ?? 'Failed to fetch circle photos');
+      }
+    } catch (e) {
+      throw Exception('Fetch photos failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadCirclePhoto(int circleId, String filePath) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/$circleId/photos'));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(await http.MultipartFile.fromPath('photo', filePath));
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) return data;
+      throw Exception(data['error'] ?? 'Failed to upload photo');
+    } catch (e) {
+      throw Exception('Upload photo failed: $e');
     }
   }
 
@@ -115,6 +185,159 @@ class CircleService {
       }
     } catch (e) {
       throw Exception('Update circle failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> requestCircleAccess(int circleId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$circleId/request-access'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) return data;
+      throw Exception(data['error'] ?? 'Failed to request access');
+    } catch (e) {
+      throw Exception('Request access failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getPendingRequests() async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/requests/pending'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return data;
+      throw Exception(data['error'] ?? 'Failed to fetch pending requests');
+    } catch (e) {
+      throw Exception('Fetch pending requests failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> respondToRequest(int requestId, String status) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/requests/$requestId/respond'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'status': status}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return data;
+      throw Exception(data['error'] ?? 'Failed to respond to request');
+    } catch (e) {
+      throw Exception('Respond to request failed: $e');
+    }
+  }
+
+  /// Member joins a circle.
+  Future<void> joinCircle(int circleId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$circleId/join'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? 'Failed to join circle');
+      }
+    } catch (e) {
+      throw Exception('Join circle failed: $e');
+    }
+  }
+
+  /// Member leaves a circle.
+  Future<void> leaveCircle(int circleId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$circleId/join'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? 'Failed to leave circle');
+      }
+    } catch (e) {
+      throw Exception('Leave circle failed: $e');
+    }
+  }
+
+  /// Invites someone to a specific circle by email.
+  Future<String> inviteToCircle(int circleId, String email) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$circleId/invite'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return data['message'] as String;
+      throw Exception(data['error'] ?? 'Failed to invite');
+    } catch (e) {
+      throw Exception('Invite to circle failed: $e');
+    }
+  }
+
+  /// Searches for members in the user's association.
+  Future<List<dynamic>> searchAssociationMembers(String query) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final uri = Uri.parse('$baseUrl/association/members').replace(queryParameters: {
+        if (query.isNotEmpty) 'search': query,
+      });
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return data['members'] as List<dynamic>;
+      } else {
+        throw Exception(data['error'] ?? 'Failed to search members');
+      }
+    } catch (e) {
+      throw Exception('Search members failed: $e');
     }
   }
 }

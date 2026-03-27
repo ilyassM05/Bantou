@@ -262,7 +262,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         'avatarIndex': _selectedAvatar,
       });
 
-      final isRestrictedAdmin = (HttpAuthService.currentUserRole == 'ADMIN' ||
+      final isSA = HttpAuthService.currentUserRole == 'SA';
+      final isRestrictedAdmin = !isSA && 
+          (HttpAuthService.currentUserRole == 'admin' ||
           HttpAuthService.currentIsInvitedAdmin) &&
           HttpAuthService.currentUserNeedsSetup;
 
@@ -325,7 +327,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     const screenTitle = 'Edit Profile';
-    final isRestrictedAdmin = (HttpAuthService.currentUserRole == 'ADMIN' ||
+    final isSA = HttpAuthService.currentUserRole == 'SA';
+    final isRestrictedAdmin = !isSA && 
+        (HttpAuthService.currentUserRole == 'admin' ||
         HttpAuthService.currentIsInvitedAdmin) &&
         HttpAuthService.currentUserNeedsSetup;
 

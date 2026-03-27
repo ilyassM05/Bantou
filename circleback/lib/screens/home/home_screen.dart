@@ -6,6 +6,8 @@ import '../../theme/app_colors.dart';
 import '../../widgets/language_picker.dart';
 import '../auth/edit_profile_screen.dart';
 import '../circles/circle_dashboard_screen.dart';
+import '../circles/member_circles_screen.dart';
+import 'sa_dashboard_screen.dart';
 
 /// Static home screen — placeholder after successful authentication.
 /// All UI strings resolved via [AppLocalizations] for multi-language support.
@@ -122,6 +124,9 @@ class HomeScreen extends StatelessWidget {
         ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
     final name = user?['name'] ?? '';
     final email = user?['email'] ?? '';
+    final role = HttpAuthService.currentUserRole ?? 'SA';
+    final isSA = role == 'SA';
+    final isMember = role == 'member';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -145,18 +150,40 @@ class HomeScreen extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
           ),
-          // User identity chip — only shown when we have user data
+          // User identity chip
           if (name.isNotEmpty || email.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _buildUserChip(name, email),
+            _buildUserChip(name, email, role),
           ],
           const SizedBox(height: 28),
+
+          // SA Dashboard card — only for Super Admins
+          if (isSA) ...[
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, SaDashboardScreen.routeName),
+              child: _SectionCard(
+                icon: Icons.dashboard_customize_outlined,
+                title: 'SA Dashboard',
+                subtitle: 'Manage members, admins & circles',
+                color: const Color(0xFFC9A84C),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Circles card — role-based target
           GestureDetector(
-            onTap: () => Navigator.pushNamed(context, CircleDashboardScreen.routeName),
+            onTap: () {
+              if (isMember) {
+                Navigator.pushNamed(context, MemberCirclesScreen.routeName);
+              } else {
+                Navigator.pushNamed(context, CircleDashboardScreen.routeName);
+              }
+            },
             child: _SectionCard(
               icon: Icons.groups_2_outlined,
               title: l.circles,
-              subtitle: l.circlesSubtitle,
+              subtitle: isMember ? 'View and join circles' : l.circlesSubtitle,
               color: const Color(0xFF818CF8),
             ),
           ),
@@ -186,8 +213,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Compact user identity card showing avatar initials, display name and email.
-  Widget _buildUserChip(String name, String email) {
+  /// Compact user identity card showing avatar initials, display name, email and role badge.
+  Widget _buildUserChip(String name, String email, String role) {
     final initials = name.trim().isNotEmpty
         ? name.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase()
         : (email.isNotEmpty ? email[0].toUpperCase() : '?');
@@ -250,12 +277,15 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 8),
+          // Role badge
+          _RoleBadge(role: role),
+          const SizedBox(width: 6),
           // Signed-in badge dot
           Container(
             width: 7,
             height: 7,
             decoration: const BoxDecoration(
-              color: Color(0xFF34D399), // green dot = active
+              color: Color(0xFF34D399),
               shape: BoxShape.circle,
             ),
           ),
@@ -336,6 +366,46 @@ class _SectionCard extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small role pill badge shown in the user identity chip.
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge({required this.role});
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    final String label;
+    switch (role) {
+      case 'SA':
+        color = const Color(0xFFC9A84C);
+        label = 'Super Admin';
+        break;
+      case 'admin':
+        color = const Color(0xFF34D399);
+        label = 'Admin';
+        break;
+      case 'member':
+        color = const Color(0xFF818CF8);
+        label = 'Member';
+        break;
+      default:
+        color = AppColors.textSecondary;
+        label = role;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }

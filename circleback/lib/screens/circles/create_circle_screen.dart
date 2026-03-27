@@ -28,6 +28,9 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
   final _viceResponsibleController = TextEditingController();
   final _meetingPlanningController = TextEditingController();
 
+  String _visibilityType = 'Public';
+  List<Map<String, dynamic>> _selectedMembers = [];
+
   bool _isLoading = false;
 
   @override
@@ -40,6 +43,23 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
     _viceResponsibleController.dispose();
     _meetingPlanningController.dispose();
     super.dispose();
+  }
+
+  void _showAddMemberDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return const _AddMemberDialog();
+      },
+    ).then((selectedUser) {
+      if (selectedUser != null) {
+        setState(() {
+          if (!_selectedMembers.any((m) => m['id'] == selectedUser['id'])) {
+            _selectedMembers.add(Map<String, dynamic>.from(selectedUser));
+          }
+        });
+      }
+    });
   }
 
   void _handleSave() async {
@@ -57,13 +77,15 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
         responsible: _responsibleController.text.trim(),
         viceResponsible: _viceResponsibleController.text.trim(),
         meetingPlanning: _meetingPlanningController.text.trim(),
+        visibilityType: _visibilityType,
+        initialMembers: _selectedMembers.map((m) => m['id'] as int).toList(),
       );
 
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Circle saved successfully!'),
+            content: Text(AppLocalizations.of(context).cdCircleSavedSuccess),
             backgroundColor: AppColors.primary,
           ),
         );
@@ -90,7 +112,7 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
       backgroundColor: AppColors.gradientStart,
       appBar: AppBar(
         title: Text(
-          l.cdTitle,
+          l.cdCreateCircleTitle,
           style: GoogleFonts.inter(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
@@ -126,7 +148,7 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildSectionTitle('Circle Details'),
+                  _buildSectionTitle(l.cdCircleDetailsTitle),
                   const SizedBox(height: 16),
                   
                   // Circle Name
@@ -141,8 +163,8 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
 
                   // Circle Description
                   AuthTextField(
-                    label: 'Description (Optional)',
-                    hint: 'Describe the purpose or focus of this circle...',
+                    label: l.cdDescriptionOptional,
+                    hint: l.cdDescriptionHintText,
                     icon: Icons.description_rounded,
                     controller: _descriptionController,
                     maxLines: 4,
@@ -175,7 +197,72 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  _buildSectionTitle('Leadership'),
+                  _buildSectionTitle(l.cdVisibilityAccess),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text(l.cdPublic, style: GoogleFonts.inter(fontSize: 14)),
+                          value: 'Public',
+                          groupValue: _visibilityType,
+                          activeColor: AppColors.primary,
+                          onChanged: (val) => setState(() => _visibilityType = val!),
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text(l.cdPrivate, style: GoogleFonts.inter(fontSize: 14)),
+                          value: 'Private',
+                          groupValue: _visibilityType,
+                          activeColor: AppColors.primary,
+                          onChanged: (val) => setState(() => _visibilityType = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_visibilityType == 'Private') ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      l.cdInviteMembers,
+                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: _showAddMemberDialog,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_add_rounded, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Text(l.cdSearchAddMembers, style: GoogleFonts.inter(color: Colors.grey.shade600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _selectedMembers.map((m) {
+                        return Chip(
+                          label: Text(m['name'] ?? m['email'], style: GoogleFonts.inter(fontSize: 12)),
+                          onDeleted: () {
+                            setState(() => _selectedMembers.remove(m));
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+
+                  _buildSectionTitle(l.cdLeadership),
                   const SizedBox(height: 16),
                   
                   // Circle Responsible
@@ -198,7 +285,7 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  _buildSectionTitle('Schedule'),
+                  _buildSectionTitle(l.cdSchedule),
                   const SizedBox(height: 16),
                   
                   // Meeting Planning
@@ -283,6 +370,95 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
           height: 1.5,
           width: 40,
           color: AppColors.primary,
+        ),
+      ],
+    );
+  }
+}
+
+class _AddMemberDialog extends StatefulWidget {
+  const _AddMemberDialog();
+
+  @override
+  State<_AddMemberDialog> createState() => _AddMemberDialogState();
+}
+
+class _AddMemberDialogState extends State<_AddMemberDialog> {
+  final _searchController = TextEditingController();
+  List<dynamic> _results = [];
+  bool _isLoading = false;
+  String _error = '';
+
+  void _search() async {
+    setState(() {
+      _isLoading = true;
+      _error = '';
+    });
+    try {
+      final res = await CircleService().searchAssociationMembers(_searchController.text.trim());
+      setState(() {
+        _results = res;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(AppLocalizations.of(context).cdAddMember, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context).cdSearchNameEmail,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _search,
+                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onSubmitted: (_) => _search(),
+            ),
+            const SizedBox(height: 16),
+            if (_isLoading) const CircularProgressIndicator(),
+            if (_error.isNotEmpty) Text(_error, style: const TextStyle(color: Colors.red)),
+            if (!_isLoading && _results.isNotEmpty)
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    final user = _results[index];
+                    return ListTile(
+                      title: Text(user['name'] ?? 'Unknown', style: GoogleFonts.inter()),
+                      subtitle: Text(user['email'] ?? '', style: GoogleFonts.inter(fontSize: 12)),
+                      onTap: () => Navigator.pop(context, user),
+                    );
+                  },
+                ),
+              ),
+            if (!_isLoading && _results.isEmpty && _searchController.text.isNotEmpty && _error.isEmpty)
+              Text(AppLocalizations.of(context).cdNoMembersFound),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppLocalizations.of(context).cdCancel),
         ),
       ],
     );

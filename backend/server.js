@@ -12,6 +12,7 @@ const app = express();
 // ── Global middleware ──────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 // ── Request logger (dev) ───────────────────────────────────────────────────
 app.use((req, _res, next) => {

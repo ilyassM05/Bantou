@@ -7,7 +7,7 @@ import '../../services/biometric_service.dart';
 import '../../services/http_auth_service.dart';
 import '../auth/forgot_password_screen.dart';
 import '../auth/create_association_screen.dart';
-import '../circles/circle_dashboard_screen.dart';
+import '../main_shell_screen.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/language_picker.dart';
 import '../../widgets/social_button.dart';
@@ -117,22 +117,25 @@ class _AuthScreenState extends State<AuthScreen>
 
   // ── Navigation ─────────────────────────────────────────────────────────
   /// All post-auth paths converge here.
-  /// - Invited admin (isInvitedAdmin flag OR role == 'ADMIN') → Dashboard (limited access)
+  /// - Invited admin (isInvitedAdmin flag OR role == 'admin') → Dashboard (limited access)
   /// - First-time creator → Association setup → Profile setup → Dashboard
   /// - Returning user → Dashboard directly
   void _goToCorrectScreen() {
-    // Use the explicit flag first; fall back to role check for safety.
     // Both signals must agree before sending someone to the association form.
     final isInvitedAdmin = HttpAuthService.currentIsInvitedAdmin ||
-        HttpAuthService.currentUserRole == 'ADMIN';
+        HttpAuthService.currentUserRole == 'admin';
+    final isMember = HttpAuthService.currentIsMember ||
+        HttpAuthService.currentUserRole == 'member';
 
-    if (!isInvitedAdmin && HttpAuthService.currentUserNeedsOnboarding) {
+    // Only force association creation for SAs who haven't done it yet
+    if (!isInvitedAdmin && !isMember && HttpAuthService.currentUserNeedsOnboarding) {
       Navigator.pushReplacementNamed(
         context,
         CreateAssociationScreen.routeName,
       );
     } else {
-      Navigator.pushReplacementNamed(context, CircleDashboardScreen.routeName);
+      // Everyone else goes directly to the main shell (tab bar)
+      Navigator.pushReplacementNamed(context, MainShellScreen.routeName);
     }
   }
 

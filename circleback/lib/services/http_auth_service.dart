@@ -24,7 +24,7 @@ class HttpAuthService implements AuthService {
   /// (Association screen + Profile setup, first-time only)
   static bool currentUserNeedsOnboarding = false;
 
-  /// Role of the currently signed-in user ('SA' for full admin, 'ADMIN' for restricted)
+  /// Role of the currently signed-in user ('SA' for super admin, 'admin' for restricted invited admin, 'member' for member)
   static String? currentUserRole;
 
   /// True when the current user is a freshly-invited admin who has not yet
@@ -32,6 +32,30 @@ class HttpAuthService implements AuthService {
   /// field and cleared once the profile is saved.
   static bool currentIsInvitedAdmin = false;
 
+  /// True when the current user is a member (not SA or admin).
+  static bool currentIsMember = false;
+
+  // ─── SA and Admin Stats ────────────────────────────────────────────────────────
+
+  /// Fetch association members for SA and Admin
+  Future<List<dynamic>> getAssociationMembers() async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('No token');
+      
+      final url = Uri.parse('$baseUrl/association/members');
+      final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else {
+        final err = jsonDecode(response.body);
+        throw Exception(err['error'] ?? 'Failed to fetch members');
+      }
+    } catch (e) {
+      throw Exception('Server error: $e');
+    }
+  }
   // ── Deep link / invite state ───────────────────────────────────────────
   /// Invite token extracted from a `bantou://invite?token=...` deep link.
   static String? pendingInviteToken;
@@ -72,6 +96,7 @@ class HttpAuthService implements AuthService {
             !(body['onboardingSeen'] as bool? ?? false);
         currentUserRole = body['role'] as String?;
         currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
+        currentIsMember = (body['role'] as String?) == 'member';
         // Save token for biometric login
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
@@ -123,7 +148,7 @@ class HttpAuthService implements AuthService {
         final token = body['token'] ?? '';
         currentUser = {'name': name, 'email': email};
         currentUserNeedsSetup = true; // new user always needs profile setup
-        // onboardingSeen=true means they were an invited admin (already linked)
+        // onboardingSeen=true means they were an invited admin or member (already linked)
         // so they do NOT need onboarding. Regular new users get false → needs onboarding.
         final onboardingSeen = body['onboardingSeen'] as bool? ?? false;
         currentUserNeedsOnboarding = !onboardingSeen;
@@ -131,6 +156,7 @@ class HttpAuthService implements AuthService {
         currentUserRole = body['role'] as String?;
         // Dedicated flag for invited admins — more reliable than just checking role
         currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
+        currentIsMember = (body['role'] as String?) == 'member';
         clearPendingInvite(); // clear invite state after successful signup
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
@@ -362,6 +388,7 @@ class HttpAuthService implements AuthService {
     currentUserNeedsOnboarding = false;
     currentUserRole = null;
     currentIsInvitedAdmin = false;
+    currentIsMember = false;
     await BiometricService.clearToken();
     await GoogleSignInService.signOut();
     await FacebookSignInService.signOut();
@@ -513,6 +540,124 @@ class HttpAuthService implements AuthService {
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Invites a new user as a member (SA invites directly; members create pending request).
+  Future<String> inviteMember(String email, {int? circleId}) async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('Not authenticated.');
+
+      final body = <String, dynamic>{'email': email};
+      if (circleId != null) body['circleId'] = circleId;
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/invite-member'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_kTimeout);
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return data['message'] as String;
+      throw Exception(data['error'] ?? 'Failed to invite member');
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
+    }
+  }
+
+  /// Fetches SA dashboard data (members, admins, circles).
+  Future<Map<String, dynamic>> getSADashboard() async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('Not authenticated.');
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/sa-dashboard'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_kTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      final data = jsonDecode(response.body);
+      throw Exception(data['error'] ?? 'Failed to load dashboard');
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
+    }
+  }
+
+  /// Fetches pending member invitations submitted by non-SA users (SA-only).
+  Future<List<dynamic>> getPendingMemberInvitations() async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('Not authenticated.');
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/member-invitations/pending'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_kTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['pendingInvitations'] as List<dynamic>;
+      }
+      final data = jsonDecode(response.body);
+      throw Exception(data['error'] ?? 'Failed to load pending invitations');
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
+    }
+  }
+
+  /// SA approves or rejects a pending member invitation.
+  Future<String> respondToMemberInvitation(int id, String action) async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('Not authenticated.');
+
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/member-invitations/$id/respond'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'action': action}),
+          )
+          .timeout(_kTimeout);
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return data['message'] as String;
+      throw Exception(data['error'] ?? 'Failed to respond');
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
     }
   }
 }
