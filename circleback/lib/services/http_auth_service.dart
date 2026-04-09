@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'auth_service.dart';
 import 'biometric_service.dart';
 import 'google_sign_in_service.dart';
@@ -27,6 +29,9 @@ class HttpAuthService implements AuthService {
   /// Role of the currently signed-in user ('SA' for super admin, 'admin' for restricted invited admin, 'member' for member)
   static String? currentUserRole;
 
+  /// Status of the currently signed-in user ('actif', 'en attente', etc.)
+  static String? currentUserStatus;
+
   /// True when the current user is a freshly-invited admin who has not yet
   /// completed their personal profile. Set from the backend `isInvitedAdmin`
   /// field and cleared once the profile is saved.
@@ -34,6 +39,15 @@ class HttpAuthService implements AuthService {
 
   /// True when the current user is a member (not SA or admin).
   static bool currentIsMember = false;
+
+  /// Cached profile picture URL for the currently signed-in user.
+  /// Updated after upload/delete and on getProfile().
+  static String? currentUserProfilePicture;
+
+  /// Cached association logo URL for the currently signed-in user's association.
+  /// Updated after upload/delete and on getAssociation().
+  static String? currentAssociationLogoUrl;
+
 
   // ─── SA and Admin Stats ────────────────────────────────────────────────────────
 
@@ -95,6 +109,7 @@ class HttpAuthService implements AuthService {
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
         currentUserRole = body['role'] as String?;
+        currentUserStatus = body['status'] as String?;
         currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         currentIsMember = (body['role'] as String?) == 'member';
         // Save token for biometric login
@@ -154,6 +169,7 @@ class HttpAuthService implements AuthService {
         currentUserNeedsOnboarding = !onboardingSeen;
         // role is returned at top-level in the signup response
         currentUserRole = body['role'] as String?;
+        currentUserStatus = body['status'] as String?;
         // Dedicated flag for invited admins — more reliable than just checking role
         currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         currentIsMember = (body['role'] as String?) == 'member';
@@ -305,6 +321,7 @@ class HttpAuthService implements AuthService {
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
         currentUserRole = body['role'] as String?;
+        currentUserStatus = body['status'] as String?;
         currentIsInvitedAdmin = body['isInvitedAdmin'] as bool? ?? false;
         if (token.isNotEmpty) {
           await BiometricService.saveToken(
@@ -387,8 +404,11 @@ class HttpAuthService implements AuthService {
     currentUserNeedsSetup = false;
     currentUserNeedsOnboarding = false;
     currentUserRole = null;
+    currentUserStatus = null;
     currentIsInvitedAdmin = false;
     currentIsMember = false;
+    currentUserProfilePicture = null;
+    currentAssociationLogoUrl = null;
     await BiometricService.clearToken();
     await GoogleSignInService.signOut();
     await FacebookSignInService.signOut();
@@ -432,7 +452,10 @@ class HttpAuthService implements AuthService {
           .timeout(_kTimeout);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        // Cache profile picture for use across the app
+        currentUserProfilePicture = data['profilePicture'] as String?;
+        return data;
       } else {
         final body = jsonDecode(response.body);
         throw Exception(body['error'] ?? 'Failed to fetch profile');
@@ -442,6 +465,66 @@ class HttpAuthService implements AuthService {
     } catch (e) {
       if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
       throw Exception('Network error — make sure the backend is running.');
+    }
+  }
+
+  /// Uploads a profile picture image file.
+  /// Returns the server-relative URL of the saved image.
+  Future<String> uploadProfilePicture(File image) async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('No authentication token found.');
+
+      final uri = Uri.parse('$baseUrl/upload-profile-picture');
+      final request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..files.add(await http.MultipartFile.fromPath(
+          'profilePicture',
+          image.path,
+          contentType: MediaType('image', 'jpeg'),
+        ));
+
+      final streamed = await request.send().timeout(_kTimeout);
+      final response = await http.Response.fromStream(streamed);
+      final body = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final url = body['profilePictureUrl'] as String;
+        currentUserProfilePicture = url;
+        return url;
+      }
+      throw Exception(body['error'] ?? 'Upload failed');
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
+    }
+  }
+
+  /// Removes the current user's profile picture.
+  Future<void> deleteProfilePicture() async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('No authentication token found.');
+
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/profile-picture'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(_kTimeout);
+
+      if (response.statusCode != 200) {
+        final body = jsonDecode(response.body);
+        throw Exception(body['error'] ?? 'Failed to remove picture');
+      }
+      currentUserProfilePicture = null;
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
     }
   }
 
@@ -475,6 +558,39 @@ class HttpAuthService implements AuthService {
       } else {
         final body = jsonDecode(response.body);
         throw Exception(body['error'] ?? 'Profile update failed');
+      }
+    } on TimeoutException {
+      throw Exception('Server not responding. Is your backend running?');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error — make sure the backend is running.');
+    }
+  }
+
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found. Please log in again.');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/change-password'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'currentPassword': currentPassword,
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(_kTimeout);
+
+      if (response.statusCode != 200) {
+        final body = jsonDecode(response.body);
+        throw Exception(body['error'] ?? 'Failed to update password');
       }
     } on TimeoutException {
       throw Exception('Server not responding. Is your backend running?');
@@ -519,6 +635,7 @@ class HttpAuthService implements AuthService {
   }
 
   /// Fetches the current user's association data from the backend.
+  /// Also caches the logo URL in [currentAssociationLogoUrl].
   Future<Map<String, dynamic>?> getAssociation() async {
     try {
       final token = await BiometricService.getToken();
@@ -535,11 +652,74 @@ class HttpAuthService implements AuthService {
           .timeout(_kTimeout);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        // Cache the association logo URL
+        currentAssociationLogoUrl = data['logoUrl'] as String?;
+        return data;
       }
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Uploads a logo image file for the current user's association.
+  /// Returns the server-relative URL of the saved logo.
+  Future<String> uploadAssociationLogo(File image) async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('No authentication token found.');
+
+      final uri = Uri.parse('$baseUrl/association/logo');
+      final request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..files.add(await http.MultipartFile.fromPath(
+          'logo',
+          image.path,
+          contentType: MediaType('image', 'jpeg'),
+        ));
+
+      final streamed = await request.send().timeout(_kTimeout);
+      final response = await http.Response.fromStream(streamed);
+      final body = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final url = body['logoUrl'] as String;
+        currentAssociationLogoUrl = url;
+        return url;
+      }
+      throw Exception(body['error'] ?? 'Logo upload failed');
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
+    }
+  }
+
+  /// Removes the current association's logo.
+  Future<void> deleteAssociationLogo() async {
+    try {
+      final token = await BiometricService.getToken();
+      if (token == null) throw Exception('No authentication token found.');
+
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/association/logo'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(_kTimeout);
+
+      if (response.statusCode != 200) {
+        final body = jsonDecode(response.body);
+        throw Exception(body['error'] ?? 'Failed to remove logo');
+      }
+      currentAssociationLogoUrl = null;
+    } on TimeoutException {
+      throw Exception('Server not responding.');
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: ')) rethrow;
+      throw Exception('Network error.');
     }
   }
 

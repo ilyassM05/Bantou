@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const circleRoutes = require('./routes/circleRoutes');
+const postRoutes = require('./routes/postRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -23,6 +24,7 @@ app.use((req, _res, next) => {
 // ── Routes ────────────────────────────────────────────────────────────────
 app.use('/auth', authRoutes);
 app.use('/api/circles', circleRoutes);
+app.use('/api/posts', postRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

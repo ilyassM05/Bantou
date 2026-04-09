@@ -31,14 +31,24 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   final _formKey = GlobalKey<FormState>();
 
   // Profile Setup fields
+  final _nameCtrl = TextEditingController();
   final _companyCtrl = TextEditingController();
   final _jobTitleCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
   final _websiteCtrl = TextEditingController();
 
+  // Password fields
+  final _currentPwdCtrl = TextEditingController();
+  final _newPwdCtrl = TextEditingController();
+  final _confirmPwdCtrl = TextEditingController();
+  bool _savingPassword = false;
+
   // Association fields
-  File? _associationLogoFile;
+  File? _associationLogoFile;           // locally picked file (before/during upload)
+  String? _currentAssociationLogoUrl;   // URL from server after successful upload
+  bool _uploadingLogo = false;
+  bool _deletingLogo = false;
   File? _companyLogoFile; // Company/personal logo
   final _assocNameCtrl = TextEditingController();
   final _assocAddressCtrl = TextEditingController();
@@ -51,6 +61,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   final List<TextEditingController> _adminEmailCtrls = [
     TextEditingController(),
   ];
+  final List<TextEditingController> _memberEmailCtrls = [
+    TextEditingController(),
+  ];
   final _fbCtrl = TextEditingController();
   final _linkedInCtrl = TextEditingController();
   final _xCtrl = TextEditingController();
@@ -59,6 +72,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   bool _loading = false;
   bool _initialFetchDone = false;
   String? _fetchError;
+
+  // Profile picture state
+  File? _pickedProfileImage;           // local file picked by user
+  String? _currentProfilePictureUrl;   // URL from server (or local cache)
+  bool _uploadingPic = false;
+  bool _deletingPic = false;
 
   static const _roles = [
     'Community Leader',
@@ -114,12 +133,17 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       if (mounted) {
         setState(() {
           // Profile Setup Fields
+          _nameCtrl.text = data['name'] ?? '';
           _companyCtrl.text = data['company'] ?? '';
           _jobTitleCtrl.text = data['jobTitle'] ?? '';
           _cityCtrl.text = data['city'] ?? '';
           _bioCtrl.text = data['bio'] ?? '';
           _websiteCtrl.text = data['website'] ?? '';
           _selectedAvatar = data['avatarIndex'] ?? 0;
+          // Populate profile picture from server or cache
+          _currentProfilePictureUrl =
+              (data['profilePicture'] as String?) ??
+              HttpAuthService.currentUserProfilePicture;
 
           final role = data['communityRole'];
           if (role != null && _roles.contains(role)) {
@@ -133,6 +157,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             _fbCtrl.text = assocData['facebookUrl'] ?? '';
             _linkedInCtrl.text = assocData['linkedinUrl'] ?? '';
             _xCtrl.text = assocData['twitterUrl'] ?? '';
+            // Load existing logo URL from server
+            _currentAssociationLogoUrl =
+                (assocData['logoUrl'] as String?) ??
+                HttpAuthService.currentAssociationLogoUrl;
 
             // Dynamic lists
             void populateList(List<TextEditingController> ctrls, String key) {
@@ -154,6 +182,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             populateList(_contactEmailCtrls, 'contactEmails');
             populateList(_contactPhoneCtrls, 'contactPhones');
             populateList(_adminEmailCtrls, 'adminEmails');
+            populateList(_memberEmailCtrls, 'memberEmails');
           }
 
           _initialFetchDone = true;
@@ -192,17 +221,174 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     for (var c in _adminEmailCtrls) {
       c.dispose();
     }
+    for (var c in _memberEmailCtrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _pickAssociationLogo() async {
     try {
       final picker = ImagePicker();
-      final picked = await picker.pickImage(source: ImageSource.gallery);
-      if (picked != null && mounted) {
-        setState(() => _associationLogoFile = File(picked.path));
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 800,
+      );
+      if (picked == null || !mounted) return;
+
+      setState(() {
+        _associationLogoFile = File(picked.path);
+        _uploadingLogo = true;
+      });
+
+      final url = await HttpAuthService().uploadAssociationLogo(File(picked.path));
+      if (mounted) {
+        setState(() {
+          _currentAssociationLogoUrl = url;
+          _uploadingLogo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Association logo updated!'),
+            backgroundColor: Color(0xFF34D399),
+          ),
+        );
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadingLogo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeAssociationLogo() async {
+    setState(() => _deletingLogo = true);
+    try {
+      await HttpAuthService().deleteAssociationLogo();
+      if (mounted) {
+        setState(() {
+          _currentAssociationLogoUrl = null;
+          _associationLogoFile = null;
+          _deletingLogo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Association logo removed.'),
+            backgroundColor: Colors.grey,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _deletingLogo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Picks a photo from gallery and immediately uploads it as the profile picture.
+  Future<void> _pickAndUploadProfilePicture() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 800,
+      );
+      if (picked == null || !mounted) return;
+
+      setState(() {
+        _pickedProfileImage = File(picked.path);
+        _uploadingPic = true;
+      });
+
+      final url = await HttpAuthService().uploadProfilePicture(File(picked.path));
+      if (mounted) {
+        setState(() {
+          _currentProfilePictureUrl = url;
+          _uploadingPic = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated!'),
+            backgroundColor: Color(0xFF34D399),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadingPic = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Removes the profile picture from the server and clears local state.
+  Future<void> _removeProfilePicture() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Profile Picture'),
+        content: const Text('Are you sure you want to remove your profile picture?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deletingPic = true);
+    try {
+      await HttpAuthService().deleteProfilePicture();
+      if (mounted) {
+        setState(() {
+          _currentProfilePictureUrl = null;
+          _pickedProfileImage = null;
+          _deletingPic = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture removed.'),
+            backgroundColor: Colors.grey,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _deletingPic = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _pickCompanyLogo() async {
@@ -245,6 +431,16 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     });
   }
 
+  void _addMemberEmail() =>
+      setState(() => _memberEmailCtrls.add(TextEditingController()));
+  void _removeMemberEmail(int i) {
+    if (_memberEmailCtrls.length <= 1) return;
+    setState(() {
+      _memberEmailCtrls[i].dispose();
+      _memberEmailCtrls.removeAt(i);
+    });
+  }
+
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -253,6 +449,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     try {
       // 1. Save Profile
       final profileSuccess = await HttpAuthService().updateProfile({
+        'name': _nameCtrl.text,
         'company': _companyCtrl.text,
         'jobTitle': _jobTitleCtrl.text,
         'communityRole': _selectedRole ?? 'Member',
@@ -283,6 +480,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             .map((c) => c.text.trim())
             .where((s) => s.isNotEmpty)
             .toList();
+        final memberEmails = _memberEmailCtrls
+            .map((c) => c.text.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
 
         assocSuccess = await HttpAuthService().saveAssociation({
           'name': _assocNameCtrl.text.trim(),
@@ -290,6 +491,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           'contactEmails': emails,
           'contactPhones': phones,
           'adminEmails': adminEmails,
+          'memberEmails': memberEmails,
           'facebookUrl': _fbCtrl.text.trim(),
           'linkedinUrl': _linkedInCtrl.text.trim(),
           'twitterUrl': _xCtrl.text.trim(),
@@ -320,6 +522,44 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       if (mounted) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  Future<void> _handleChangePassword() async {
+    if (_currentPwdCtrl.text.isEmpty || _newPwdCtrl.text.isEmpty || _confirmPwdCtrl.text.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all password fields', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+      return;
+    }
+    if (_newPwdCtrl.text != _confirmPwdCtrl.text) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New passwords do not match', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+      return;
+    }
+    if (_newPwdCtrl.text.length < 6) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New password must be at least 6 characters', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+      return;
+    }
+
+    setState(() => _savingPassword = true);
+    try {
+      await HttpAuthService().changePassword(_currentPwdCtrl.text, _newPwdCtrl.text);
+      _currentPwdCtrl.clear();
+      _newPwdCtrl.clear();
+      _confirmPwdCtrl.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Color(0xFF34D399)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''), style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _savingPassword = false);
     }
   }
 
@@ -409,6 +649,15 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const SizedBox(height: 16),
+                          // ── Profile Picture Card ──
+                          FadeTransition(
+                            opacity: _fadeAnim,
+                            child: SlideTransition(
+                              position: _slideAnim,
+                              child: _buildProfilePictureCard(),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           // ── Association Cards ──
                           FadeTransition(
                             opacity: _fadeAnim,
@@ -424,6 +673,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                     children: [_buildLogoPicker(l, isRestrictedAdmin)],
                                   ),
                                   const SizedBox(height: 16),
+
                                   // Basic info
                                   _buildCard(
                                     icon: Icons.business_outlined,
@@ -583,6 +833,60 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                     ],
                                   ),
                                   const SizedBox(height: 16),
+                                  // Member Emails
+                                  _buildCard(
+                                    icon: Icons.group_add_outlined,
+                                    title: 'Member Emails', // l.caMemberEmailsTitle
+                                    iconColor: const Color(0xFF10B981),
+                                    children: [
+                                      ..._memberEmailCtrls.asMap().entries.map(
+                                        (e) => _buildDynamicRow(
+                                          index: e.key,
+                                          ctrl: e.value,
+                                          hint: 'member@example.com', // l.caMemberEmailHint
+                                          icon: Icons.person_add_outlined,
+                                          keyboardType:
+                                              TextInputType.emailAddress,
+                                          removeLabel: l.caRemoveBtn,
+                                          canRemove:
+                                              !isRestrictedAdmin && (_memberEmailCtrls.length > 1 ||
+                                              (e.key == 0 &&
+                                                  _memberEmailCtrls[0]
+                                                      .text
+                                                      .isNotEmpty)),
+                                          onRemove: () {
+                                            if (_memberEmailCtrls.length == 1) {
+                                              _memberEmailCtrls[0].clear();
+                                            } else {
+                                              _removeMemberEmail(e.key);
+                                            }
+                                          },
+                                          isFirst: e.key == 0,
+                                          enabled: !isRestrictedAdmin,
+                                          // Validate if not empty
+                                          validator: (v) {
+                                            if (v == null || v.trim().isEmpty)
+                                              return null;
+                                            final RegExp emailExp = RegExp(
+                                              r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+',
+                                            );
+                                            if (!emailExp.hasMatch(v.trim())) {
+                                              return 'Invalid email format';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ),
+                                      if (!isRestrictedAdmin) ...[
+                                        const SizedBox(height: 8),
+                                        _buildAddButton(
+                                          'Add Member Email', // l.caAddMemberEmailBtn
+                                          _addMemberEmail,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
                                   // Socials
                                   _buildCard(
                                     icon: Icons.share_outlined,
@@ -644,6 +948,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                   _buildCompanyLogoPicker(),
                                   const SizedBox(height: 16),
                                   AuthTextField(
+                                    label: l.caNameLabel,
+                                    hint: 'Your full name',
+                                    icon: Icons.person_outline,
+                                    controller: _nameCtrl,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthTextField(
                                     label: l.psCompanyLabel,
                                     hint: l.psCompanyHint,
                                     icon: Icons.business_outlined,
@@ -658,6 +969,58 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                   ),
                                   const SizedBox(height: 16),
                                   _buildRoleDropdown(l),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FadeTransition(
+                            opacity: _fadeAnim,
+                            child: SlideTransition(
+                              position: _slideAnim,
+                              child: _buildCard(
+                                icon: Icons.security_outlined,
+                                title: 'Password & Security',
+                                iconColor: Colors.deepOrangeAccent,
+                                children: [
+                                  AuthTextField(
+                                    label: 'Current Password',
+                                    hint: 'Enter your current password',
+                                    icon: Icons.lock_outline,
+                                    controller: _currentPwdCtrl,
+                                    isPassword: true,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthTextField(
+                                    label: 'New Password',
+                                    hint: 'Enter your new password',
+                                    icon: Icons.lock_reset_outlined,
+                                    controller: _newPwdCtrl,
+                                    isPassword: true,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthTextField(
+                                    label: 'Confirm New Password',
+                                    hint: 'Re-enter your new password',
+                                    icon: Icons.check_circle_outline,
+                                    controller: _confirmPwdCtrl,
+                                    isPassword: true,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: _savingPassword ? null : _handleChangePassword,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        backgroundColor: Colors.deepOrangeAccent,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      child: _savingPassword
+                                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                        : Text('Change Password', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -726,7 +1089,235 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
   }
 
+  /// Premium profile picture card with upload/remove capability.
+  Widget _buildProfilePictureCard() {
+    const kBaseUrl = 'http://10.0.2.2:3000';
+    final hasPhoto =
+        _currentProfilePictureUrl != null && _currentProfilePictureUrl!.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.08),
+            const Color(0xFF818CF8).withValues(alpha: 0.06),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          // Photo preview
+          Stack(
+            children: [
+              Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: _uploadingPic
+                      ? Container(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        )
+                      : hasPhoto
+                          ? Image.network(
+                              '$kBaseUrl${_currentProfilePictureUrl!}',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _buildInitialsAvatar(84),
+                            )
+                          : _pickedProfileImage != null
+                              ? Image.file(
+                                  _pickedProfileImage!,
+                                  fit: BoxFit.cover,
+                                )
+                              : _buildInitialsAvatar(84),
+                ),
+              ),
+              if (hasPhoto)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _uploadingPic || _deletingPic
+                        ? null
+                        : _pickAndUploadProfilePicture,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profile Photo',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasPhoto
+                      ? 'Your profile picture is set'
+                      : 'Add a photo so people can recognise you',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _uploadingPic || _deletingPic
+                            ? null
+                            : _pickAndUploadProfilePicture,
+                        icon: _uploadingPic
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.upload_rounded, size: 16),
+                        label: Text(
+                          hasPhoto ? 'Change' : 'Upload',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    if (hasPhoto) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _uploadingPic || _deletingPic
+                              ? null
+                              : _removeProfilePicture,
+                          icon: _deletingPic
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.redAccent,
+                                  ),
+                                )
+                              : const Icon(Icons.delete_outline, size: 16),
+                          label: Text(
+                            'Remove',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: const BorderSide(color: Colors.redAccent),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Initials fallback avatar used inside the profile picture card.
+  Widget _buildInitialsAvatar(double size) {
+    final name = _nameCtrl.text.trim();
+    final parts = name.split(RegExp(r'\s+'));
+    final initials = parts.length >= 2
+        ? '${parts.first[0]}${parts.last[0]}'.toUpperCase()
+        : name.isNotEmpty
+            ? name[0].toUpperCase()
+            : '?';
+    return Container(
+      width: size,
+      height: size,
+      color: AppColors.primary.withValues(alpha: 0.15),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: GoogleFonts.inter(
+          fontSize: size * 0.35,
+          fontWeight: FontWeight.w700,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
+
   Widget _buildAppBar(String title) {
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1140,65 +1731,124 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   // ── Logo picker widget ───────────────────────────────────────────────────
   Widget _buildLogoPicker(AppLocalizations l, bool isRestrictedAdmin) {
-    return Center(
-      child: GestureDetector(
-        onTap: isRestrictedAdmin ? null : _pickAssociationLogo,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            color: AppColors.inputFill,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _associationLogoFile != null
-                  ? AppColors.primary
-                  : AppColors.borderSoft,
-              width: _associationLogoFile != null ? 2 : 1,
-            ),
-            boxShadow: _associationLogoFile != null
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      blurRadius: 12,
-                    ),
-                  ]
-                : [],
-          ),
-          child: _associationLogoFile != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Image.file(
-                    _associationLogoFile!,
-                    fit: BoxFit.cover,
-                    width: 110,
-                    height: 110,
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_photo_alternate_rounded,
-                      size: 36,
-                      color: AppColors.textHint,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l.caLogoBtn,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+    const kBaseUrl = 'http://10.0.2.2:3000';
+    final hasServerLogo = _currentAssociationLogoUrl != null &&
+        _currentAssociationLogoUrl!.isNotEmpty;
+    final hasLocalFile = _associationLogoFile != null;
+    final hasAny = hasServerLogo || hasLocalFile;
+
+    return Column(
+      children: [
+        Center(
+          child: GestureDetector(
+            onTap: (isRestrictedAdmin || _uploadingLogo || _deletingLogo)
+                ? null
+                : _pickAssociationLogo,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                color: AppColors.inputFill,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: hasAny ? AppColors.primary : AppColors.borderSoft,
+                  width: hasAny ? 2 : 1,
                 ),
+                boxShadow: hasAny
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: _uploadingLogo
+                  ? const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : hasLocalFile
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: Image.file(
+                            _associationLogoFile!,
+                            fit: BoxFit.cover,
+                            width: 110,
+                            height: 110,
+                          ),
+                        )
+                      : hasServerLogo
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: Image.network(
+                                '$kBaseUrl${_currentAssociationLogoUrl!}',
+                                fit: BoxFit.cover,
+                                width: 110,
+                                height: 110,
+                                errorBuilder: (_, __, ___) => _logoPlaceholder(l),
+                              ),
+                            )
+                          : _logoPlaceholder(l),
+            ),
+          ),
         ),
-      ),
+        if (hasAny && !isRestrictedAdmin) ...[
+          const SizedBox(height: 10),
+          Center(
+            child: TextButton.icon(
+              onPressed: _deletingLogo ? null : _removeAssociationLogo,
+              icon: _deletingLogo
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.redAccent),
+                    )
+                  : const Icon(Icons.delete_outline,
+                      size: 16, color: Colors.redAccent),
+              label: Text(
+                'Remove Logo',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
+
+  Widget _logoPlaceholder(AppLocalizations l) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.add_photo_alternate_rounded,
+            size: 36, color: AppColors.textHint),
+        const SizedBox(height: 8),
+        Text(
+          l.caLogoBtn,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
 
   // ── Dynamic row (email / phone) ──────────────────────────────────────────
   Widget _buildDynamicRow({

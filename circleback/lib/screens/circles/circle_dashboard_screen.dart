@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../theme/app_colors.dart';
 import '../../services/circle_service.dart';
 import '../../services/http_auth_service.dart';
+import '../../widgets/user_avatar.dart';
+import '../posts/user_profile_screen.dart';
 import 'circle_details_screen.dart';
 import 'create_circle_screen.dart';
 import 'pending_requests_screen.dart';
@@ -28,6 +30,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
   String? _associationName;
   int _activeMembersCount = 0;
   int _meetingsCount = 0;
+  int _pendingRequestsCount = 0;
   List<dynamic> _circles = [];
   String? _errorMessage;
   String _searchQuery = '';
@@ -54,12 +57,27 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
       final service = CircleService();
       final data = await service.getCircles();
 
+      int pendingCount = 0;
+      final bool canViewRequests = HttpAuthService.currentUserRole == 'SA' ||
+          HttpAuthService.currentUserRole == 'admin' ||
+          HttpAuthService.currentIsInvitedAdmin;
+
+      if (canViewRequests) {
+        try {
+          final reqData = await service.getPendingRequests();
+          pendingCount = (reqData['pendingRequests'] as List?)?.length ?? 0;
+        } catch (_) {
+          // ignore error to unblock main dashboard
+        }
+      }
+
       if (mounted) {
         setState(() {
           _associationName = data['associationName'];
           _activeMembersCount = data['activeMembersCount'] ?? 0;
           _meetingsCount = data['meetingsCount'] ?? 0;
           _circles = data['circles'] ?? [];
+          _pendingRequestsCount = pendingCount;
           _isLoading = false;
         });
       }
@@ -406,7 +424,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                  ],
                ),
           ),
-          if (HttpAuthService.currentUserRole == 'SA')
+          if (HttpAuthService.currentUserRole != null)
             IconButton(
               tooltip: 'Invite new Member',
               icon: const Icon(Icons.person_add_rounded, color: AppColors.primary),
@@ -424,17 +442,26 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: () {
-              Navigator.pushNamed(context, '/edit-profile');
+              Navigator.pushNamed(context, '/edit-profile').then((_) {
+                if (mounted) setState(() {});
+              });
             },
             child: Container(
-               width: 40,
-               height: 40,
-               decoration: BoxDecoration(
-                 color: AppColors.primary.withValues(alpha: 0.1),
-                 shape: BoxShape.circle,
-                 border: Border.all(color: AppColors.primary, width: 2),
-               ),
-               child: const Icon(Icons.person, color: AppColors.primary, size: 24),
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary, width: 2),
+              ),
+              child: ClipOval(
+                child: UserAvatar(
+                  profilePictureUrl: HttpAuthService.currentUserProfilePicture,
+                  name: _user?['name'] ?? 'User',
+                  size: 42,
+                  animate: false, // Static in header — no logo switching
+                  fallbackColor: AppColors.primary,
+                ),
+              ),
             ),
           ),
         ],
@@ -510,15 +537,148 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
     );
   }
 
+  void _showTotalCirclesBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        decoration: BoxDecoration(
+          color: AppColors.cardSurface,
+          borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+        ),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.borderSoft))),
+              child: Row(
+                children: [
+                   const Icon(Icons.group_work_outlined, color: AppColors.primary),
+                   const SizedBox(width: 8),
+                   Text(AppLocalizations.of(context).cdTotalCircles, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                   const Spacer(),
+                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _circles.isEmpty
+                ? Center(child: Text(AppLocalizations.of(context).cdNoCircles, style: GoogleFonts.inter(color: AppColors.textSecondary)))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _circles.length,
+                    itemBuilder: (context, index) {
+                      final circle = _circles[index];
+                      final name = circle['name'] ?? 'Unknown';
+                      final statusLabel = AppLocalizations.of(context).translateStatus(circle['status'] ?? 'Active');
+                      final visibilityLabel = AppLocalizations.of(context).translateStatus(circle['visibilityType'] ?? 'Public');
+                      return ListTile(
+                        leading: CircleAvatar(backgroundColor: AppColors.primary.withValues(alpha:0.1), child: const Icon(Icons.group_work, color: AppColors.primary, size: 20)),
+                        title: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        subtitle: Text('$statusLabel • $visibilityLabel', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMeetingsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        decoration: BoxDecoration(
+          color: AppColors.cardSurface,
+          borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+        ),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.borderSoft))),
+              child: Row(
+                children: [
+                   const Icon(Icons.calendar_month_outlined, color: AppColors.primary),
+                   const SizedBox(width: 8),
+                   Text(AppLocalizations.of(context).cdMeetings, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                   const Spacer(),
+                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _circles.isEmpty
+                ? Center(child: Text(AppLocalizations.of(context).cdNoCircles, style: GoogleFonts.inter(color: AppColors.textSecondary)))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _circles.length,
+                    itemBuilder: (context, index) {
+                      final circle = _circles[index];
+                      final name = circle['name'] ?? 'Unknown';
+                      
+                      String formattedDate = circle['createdAt'] ?? '';
+                      if (formattedDate.isNotEmpty) {
+                        try {
+                           final dt = DateTime.parse(formattedDate);
+                           formattedDate = DateFormat('MMM d, yyyy').format(dt);
+                        } catch (_) {}
+                      }
+                      final time = circle['meetingPlanning'] ?? 'TBD';
+                      final responsible = circle['responsible'] ?? 'Unknown';
+                      final viceResponsible = circle['viceResponsible'] ?? 'Unknown';
+
+                      return ListTile(
+                        isThreeLine: true,
+                        leading: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+                          child: const Icon(Icons.event, color: AppColors.primary, size: 20),
+                        ),
+                        title: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('$formattedDate • $time', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                            const SizedBox(height: 4),
+                            Text('${AppLocalizations.of(context).cdResponsibleSmall}: $responsible', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                            Text('${AppLocalizations.of(context).cdViceResponsibleSmall}: $viceResponsible', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsRow() {
     final canViewMembers = HttpAuthService.currentUserRole == 'SA' || HttpAuthService.currentUserRole == 'admin' || HttpAuthService.currentIsInvitedAdmin;
     return Row(
       children: [
-        Expanded(child: _buildStatItem('${_circles.length}', AppLocalizations.of(context).cdTotalCircles, null)),
+        Expanded(child: _buildStatItem('${_circles.length}', AppLocalizations.of(context).cdTotalCircles, _showTotalCirclesBottomSheet)),
         const SizedBox(width: 12),
         Expanded(child: _buildStatItem('$_activeMembersCount', AppLocalizations.of(context).cdActiveMembers, canViewMembers ? _showAssociationMembersBottomSheet : null)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatItem('$_meetingsCount', AppLocalizations.of(context).cdMeetings, null)),
+        Expanded(child: _buildStatItem('$_meetingsCount', AppLocalizations.of(context).cdMeetings, _showMeetingsBottomSheet)),
       ],
     );
   }
@@ -580,21 +740,29 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        if (HttpAuthService.currentUserRole == 'SA')
-          TextButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PendingRequestsScreen()),
-              ).then((_) => _fetchData());
-            },
-            icon: const Icon(Icons.people_alt_outlined, size: 16, color: AppColors.primary),
-            label: Text(
-              AppLocalizations.of(context).cdRequestsBtn,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.primary,
+        if (HttpAuthService.currentUserRole == 'SA' ||
+            HttpAuthService.currentUserRole == 'admin' ||
+            HttpAuthService.currentIsInvitedAdmin)
+          Badge(
+            isLabelVisible: _pendingRequestsCount > 0,
+            label: Text(_pendingRequestsCount > 9 ? '9+' : '$_pendingRequestsCount'),
+            backgroundColor: Colors.red,
+            offset: const Offset(-8, 4),
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PendingRequestsScreen()),
+                ).then((_) => _fetchData());
+              },
+              icon: const Icon(Icons.people_alt_outlined, size: 16, color: AppColors.primary),
+              label: Text(
+                AppLocalizations.of(context).cdRequestsBtn,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ),
@@ -1074,41 +1242,59 @@ class _AssociationMembersModalState extends State<_AssociationMembersModal> {
                             final name = m['name'] ?? 'Unknown';
                             final email = m['email'] ?? '';
                             final role = m['role'] ?? 'member';
-                            final initials = name.trim().isNotEmpty ? name.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase() : '?';
+                            final profilePic = m['profilePicture'] as String?;
+                            final assocLogo = m['associationLogo'] as String?;
                             Color roleColor = role == 'SA' ? const Color(0xFFC9A84C) : role == 'admin' ? const Color(0xFF34D399) : const Color(0xFF818CF8);
                             
-                            return Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.cardSurface,
-                                border: Border.all(color: AppColors.borderSoft),
-                                borderRadius: BorderRadius.circular(12),
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                ctx,
+                                MaterialPageRoute(
+                                  builder: (_) => UserProfileScreen(
+                                    userId: m['id'] as int,
+                                    userName: name,
+                                  ),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: roleColor.withValues(alpha: 0.2),
-                                    child: Text(initials, style: GoogleFonts.inter(color: roleColor, fontWeight: FontWeight.w700, fontSize: 13)),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                                        Text(email, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                                      ],
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardSurface,
+                                  border: Border.all(color: AppColors.borderSoft),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    UserAvatar(
+                                      profilePictureUrl: profilePic,
+                                      associationLogoUrl: assocLogo,
+                                      name: name,
+                                      size: 44,
+                                      animate: true,
+                                      fallbackColor: roleColor,
                                     ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: roleColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                          Text(email, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                                        ],
+                                      ),
                                     ),
-                                    child: Text(role == 'SA' ? 'Super Admin' : role == 'admin' ? 'Admin' : 'Member', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: roleColor)),
-                                  ),
-                                ],
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: roleColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(role == 'SA' ? 'Super Admin' : role == 'admin' ? 'Admin' : 'Member', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: roleColor)),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
+                                  ],
+                                ),
                               ),
                             );
                           },

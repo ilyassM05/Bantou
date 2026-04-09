@@ -164,9 +164,28 @@ bootstrap.connect((err) => {
                                                     )
                                                 `;
                                                 bootstrap.query(createMeetings, (err) => {
-                                                    if (err) console.error('Error creating meetings table:', err);
-                                                    else console.log('✔  Table `meetings` ready.');
-                                                    bootstrap.end();
+                                                    if (err) { console.error('Error creating meetings table:', err); bootstrap.end(); return; }
+                                                    console.log('✔  Table `meetings` ready.');
+
+                                                    const createPosts = `
+                                                        CREATE TABLE IF NOT EXISTS posts (
+                                                            id             INT AUTO_INCREMENT PRIMARY KEY,
+                                                            user_id        INT NOT NULL,
+                                                            association_id INT NOT NULL,
+                                                            content        TEXT,
+                                                            image_url      VARCHAR(500) DEFAULT NULL,
+                                                            likes_count    INT DEFAULT 0,
+                                                            comments_count INT DEFAULT 0,
+                                                            created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                                            FOREIGN KEY (association_id) REFERENCES associations(id) ON DELETE CASCADE
+                                                        )
+                                                    `;
+                                                    bootstrap.query(createPosts, (err) => {
+                                                        if (err) console.error('Error creating posts table:', err);
+                                                        else console.log('✔  Table `posts` ready.');
+                                                        bootstrap.end();
+                                                    });
                                                 });
                                             });
                                         });

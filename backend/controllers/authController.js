@@ -2,6 +2,8 @@ require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Association = require('../models/Association');
@@ -47,6 +49,7 @@ exports.signup = async (req, res, next) => {
         let invitedAssoc = null;
         let isInvitedByToken = false;
         let invitedRole = null; // 'admin' | 'member' | null
+        let invitedInviterRole = null; // 'SA' | 'admin' | 'member'
 
         if (inviteToken) {
             try {
@@ -54,6 +57,7 @@ exports.signup = async (req, res, next) => {
                 if (payload.purpose === 'admin_invite' || payload.purpose === 'member_invite') {
                     isInvitedByToken = true;
                     invitedRole = payload.purpose === 'member_invite' ? 'member' : 'admin';
+                    invitedInviterRole = payload.inviterRole || 'SA'; // default to SA for backwards compat
                     // Link to the association stored in the token
                     if (payload.associationId) {
                         const db = require('../config/db');
@@ -91,11 +95,14 @@ exports.signup = async (req, res, next) => {
         // Final role decision
         let role, status;
         if (invitedRole === 'member' && invitedAssoc) {
-            role = 'member'; status = 'actif';
+            role = 'member'; 
+            status = invitedInviterRole === 'member' ? 'en attente' : 'actif';
         } else if (invitedRole === 'admin' || invitedAssoc) {
-            role = 'admin'; status = 'actif';
+            role = 'admin'; 
+            status = 'actif';
         } else {
-            role = 'SA'; status = 'en attente';
+            role = 'SA'; 
+            status = 'actif';
         }
         console.log(`[SIGNUP] Final Role for "${email}": ${role}`);
 
@@ -117,11 +124,12 @@ exports.signup = async (req, res, next) => {
             message: 'Account created successfully.',
             token,
             role,
+            status,
             isInvitedAdmin: role === 'admin',
             isMember: role === 'member',
             profileSetupSeen: false,
             onboardingSeen: !!(invitedAssoc || role === 'member'),
-            user: { id, name, email, role },
+            user: { id, name, email, role, status },
         });
     } catch (err) {
         next(err);
@@ -167,10 +175,11 @@ exports.login = async (req, res, next) => {
             message: 'Login successful.',
             token,
             role: user.role,
+            status: user.status,
             isInvitedAdmin: user.role === 'admin',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
-            user: { id: user.id, name: user.name, email: user.email, role: user.role },
+            user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
         });
     } catch (err) {
         next(err);
@@ -320,10 +329,11 @@ exports.googleSignIn = async (req, res, next) => {
             message: 'Google sign-in successful.',
             token,
             role: user.role || role,
+            status: user.status,
             isInvitedAdmin: (user.role || role) === 'admin',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
-            user: { id: user.id, name: user.name, email: user.email },
+            user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
         });
     } catch (err) {
         if (err.message && err.message.includes('Token used too late')) {
@@ -394,10 +404,11 @@ exports.facebookSignIn = async (req, res, next) => {
             message: 'Facebook sign-in successful.',
             token,
             role: user.role || role,
+            status: user.status,
             isInvitedAdmin: (user.role || role) === 'admin',
             profileSetupSeen: !!user.profile_setup_seen,
             onboardingSeen: !!user.onboarding_seen,
-            user: { id: user.id, name: user.name, email: user.email },
+            user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
         });
     } catch (err) {
         next(err);
@@ -438,6 +449,47 @@ exports.updateProfile = async (req, res, next) => {
 };
 
 /**
+ * POST /auth/change-password
+ * Body: { currentPassword, newPassword }
+ * Requires JWT via authMiddleware
+ */
+exports.changePassword = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current password and new password are required.' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        if (!user.password) {
+            return res.status(400).json({ error: 'Your account uses social login. You cannot change the password.' });
+        }
+
+        const match = await bcrypt.compare(currentPassword, user.password).catch(() => false);
+        if (!match && currentPassword !== user.password) {
+            return res.status(401).json({ error: 'Incorrect current password.' });
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        await User.updatePassword(user.email, passwordHash);
+
+        res.status(200).json({ message: 'Password updated successfully.' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
  * GET /auth/profile
  * Returns the currently authenticated user's profile data.
  */
@@ -466,6 +518,7 @@ exports.getProfile = async (req, res, next) => {
             bio: user.bio,
             website: user.website,
             avatarIndex: user.avatar_index,
+            profilePicture: user.profile_picture || null,
         });
     } catch (err) {
         next(err);
@@ -513,6 +566,7 @@ exports.createAssociation = async (req, res, next) => {
             contactEmails,
             contactPhones,
             adminEmails,
+            memberEmails,
             facebookUrl,
             linkedinUrl,
             twitterUrl,
@@ -536,8 +590,23 @@ exports.createAssociation = async (req, res, next) => {
             }
         }
 
+        // Validate member email formats
+        let cleanMemberEmails = [];
+        if (memberEmails && Array.isArray(memberEmails)) {
+            for (const email of memberEmails) {
+                const trimmed = email.trim().toLowerCase();
+                if (trimmed) {
+                    if (!EMAIL_REGEX.test(trimmed)) {
+                        return res.status(400).json({ error: `Invalid email format: ${trimmed}` });
+                    }
+                    cleanMemberEmails.push(trimmed);
+                }
+            }
+        }
+
         // Check for newly added admins to send invitations
         let newlyAddedEmails = [];
+        let newlyAddedMemberEmails = [];
         const existingAssoc = await Association.findByUserId(userId);
         if (existingAssoc && existingAssoc.admin_emails) {
             const oldAdmins = safeParse(existingAssoc.admin_emails);
@@ -545,10 +614,21 @@ exports.createAssociation = async (req, res, next) => {
             newlyAddedEmails = cleanAdminEmails.filter(email => !oldAdmins.includes(email));
         } else {
             // First time setting up association, all are new
-            console.log(`[ASSOC] No existing association found for userId: ${userId}`);
+            console.log(`[ASSOC] No existing association found for userId: ${userId} (admins)`);
             newlyAddedEmails = [...cleanAdminEmails];
         }
-        console.log(`[ASSOC] Newly added emails to invite:`, newlyAddedEmails);
+        console.log(`[ASSOC] Newly added admin emails to invite:`, newlyAddedEmails);
+
+        // Check for newly added members to send invitations
+        if (existingAssoc && existingAssoc.member_emails) {
+            const oldMembers = safeParse(existingAssoc.member_emails);
+            console.log(`[ASSOC] Found existing assoc: "${existingAssoc.name}". Old members:`, oldMembers);
+            newlyAddedMemberEmails = cleanMemberEmails.filter(email => !oldMembers.includes(email));
+        } else {
+            console.log(`[ASSOC] No existing association found for userId: ${userId} (members)`);
+            newlyAddedMemberEmails = [...cleanMemberEmails];
+        }
+        console.log(`[ASSOC] Newly added member emails to invite:`, newlyAddedMemberEmails);
 
         await Association.createOrUpdate(userId, {
             name,
@@ -557,6 +637,7 @@ exports.createAssociation = async (req, res, next) => {
             contactEmails,
             contactPhones,
             adminEmails: cleanAdminEmails,
+            memberEmails: cleanMemberEmails,
             facebookUrl,
             linkedinUrl,
             twitterUrl,
@@ -593,11 +674,27 @@ exports.createAssociation = async (req, res, next) => {
                 { expiresIn: '7d' }
             );
             generatedInviteTokens[email] = inviteToken;
-            console.log(`[ASSOC] Sending invitation to: ${email} (Inviter: ${inviterName})`);
+            console.log(`[ASSOC] Sending admin invitation to: ${email} (Inviter: ${inviterName})`);
             await sendAdminInvitationEmail(email, inviterName, name, inviteToken).then(() => {
-                console.log(`[ASSOC] SUCCESS: Invitation sent to ${email}`);
+                console.log(`[ASSOC] SUCCESS: Admin invitation sent to ${email}`);
             }).catch(err => {
-                console.error(`[ASSOC] ERROR: Failed to send invitation to ${email}:`, err);
+                console.error(`[ASSOC] ERROR: Failed to send admin invitation to ${email}:`, err);
+            });
+        }
+
+        // Send invitations to newly added members asynchronously
+        for (const email of newlyAddedMemberEmails) {
+            const inviteToken = jwt.sign(
+                { email, associationId: newAssoc ? newAssoc.id : null, purpose: 'member_invite' },
+                JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            generatedInviteTokens[email] = inviteToken;
+            console.log(`[ASSOC] Sending member invitation to: ${email} (Inviter: ${inviterName})`);
+            await sendMemberInvitationEmail(email, inviterName, name, inviteToken).then(() => {
+                console.log(`[ASSOC] SUCCESS: Member invitation sent to ${email}`);
+            }).catch(err => {
+                console.error(`[ASSOC] ERROR: Failed to send member invitation to ${email}:`, err);
             });
         }
 
@@ -639,6 +736,7 @@ exports.getAssociation = async (req, res, next) => {
             contactEmails: safeParse(association.contact_emails),
             contactPhones: safeParse(association.contact_phones),
             adminEmails: safeParse(association.admin_emails),
+            memberEmails: safeParse(association.member_emails),
             facebookUrl: association.fb_link,
             linkedinUrl: association.linkedin_link,
             twitterUrl: association.twitter_link,
@@ -826,36 +924,26 @@ exports.inviteMember = async (req, res, next) => {
 
         const db = require('../config/db');
 
-        if (inviterRole === 'SA') {
-            // SA: create invitation record + generate token + send email immediately
-            const [invRow] = await db.query(
-                `INSERT INTO member_invitations (association_id, invited_by, invitee_email, circle_id, token, status)
-                 VALUES (?, ?, ?, ?, '', 'pending')`,
-                [assoc.id, inviterId, email.trim().toLowerCase(), circleId || null]
-            );
-            const invitationId = invRow.insertId;
+        // Create invitation record + generate token + send email immediately for ALL allowlisted roles
+        const [invRow] = await db.query(
+            `INSERT INTO member_invitations (association_id, invited_by, invitee_email, circle_id, token, status)
+             VALUES (?, ?, ?, ?, '', 'pending')`,
+            [assoc.id, inviterId, email.trim().toLowerCase(), circleId || null]
+        );
+        const invitationId = invRow.insertId;
 
-            const inviteToken = jwt.sign(
-                { email: email.trim().toLowerCase(), associationId: assoc.id, purpose: 'member_invite', invitationId },
-                JWT_SECRET,
-                { expiresIn: '7d' }
-            );
+        const inviteToken = jwt.sign(
+            { email: email.trim().toLowerCase(), associationId: assoc.id, purpose: 'member_invite', invitationId, inviterRole },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
-            await db.query('UPDATE member_invitations SET token=?, status=? WHERE id=?',
-                [inviteToken, 'pending', invitationId]);
+        await db.query('UPDATE member_invitations SET token=?, status=? WHERE id=?',
+            [inviteToken, 'pending', invitationId]);
 
-            await sendMemberInvitationEmail(email.trim().toLowerCase(), inviterName, assoc.name, inviteToken, circleName);
+        await sendMemberInvitationEmail(email.trim().toLowerCase(), inviterName, assoc.name, inviteToken, circleName);
 
-            return res.status(200).json({ message: 'Member invitation sent successfully.' });
-        } else {
-            // Non-SA: create pending invitation — SA must approve before email is sent
-            await db.query(
-                `INSERT INTO member_invitations (association_id, invited_by, invitee_email, circle_id, token, status)
-                 VALUES (?, ?, ?, ?, '', 'pending')`,
-                [assoc.id, inviterId, email.trim().toLowerCase(), circleId || null]
-            );
-            return res.status(200).json({ message: 'Your invitation request has been submitted. It will be sent once the Super Admin approves it.' });
-        }
+        return res.status(200).json({ message: 'Member invitation sent successfully.' });
     } catch (err) {
         next(err);
     }
@@ -1030,14 +1118,155 @@ exports.getAssociationMembers = async (req, res, next) => {
 
         const db = require('../config/db');
         const [members] = await db.query(
-            `SELECT u.id, u.name, u.email, u.role, u.status 
+            `SELECT u.id, u.name, u.email, u.role, u.status, u.profile_picture 
              FROM users u 
              JOIN association_members am ON u.id = am.user_id 
              WHERE am.association_id = ?`,
             [assoc.id]
         );
 
-        res.status(200).json(members);
+        // Include association logo for the animation feature
+        const membersWithLogo = members.map(m => ({
+            ...m,
+            profilePicture: m.profile_picture || null,
+            associationLogo: assoc.logo || null,
+        }));
+
+        res.status(200).json(membersWithLogo);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ─── Association Logo Controllers ────────────────────────────────────────────
+
+/**
+ * POST /auth/association/logo
+ * Accepts multipart/form-data with field 'logo'.
+ * Saves the logo path to associations.logo for the current user's association.
+ */
+exports.uploadAssociationLogo = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No logo file provided.' });
+        }
+
+        const assoc = await Association.findByUserId(req.user.id);
+        if (!assoc) {
+            return res.status(404).json({ error: 'No association found.' });
+        }
+
+        const relativePath = '/uploads/logos/' + req.file.filename;
+
+        // Delete old logo file if it exists and is not a mock
+        if (assoc.logo && !assoc.logo.includes('mock_')) {
+            const oldFilePath = path.join(__dirname, '..', assoc.logo);
+            if (fs.existsSync(oldFilePath)) {
+                try { fs.unlinkSync(oldFilePath); } catch (_) {}
+            }
+        }
+
+        const db = require('../config/db');
+        await db.query('UPDATE associations SET logo = ? WHERE id = ?', [relativePath, assoc.id]);
+
+        res.status(200).json({
+            message: 'Association logo uploaded successfully.',
+            logoUrl: relativePath,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * DELETE /auth/association/logo
+ * Removes the association logo from disk and clears the DB field.
+ */
+exports.deleteAssociationLogo = async (req, res, next) => {
+    try {
+        const assoc = await Association.findByUserId(req.user.id);
+        if (!assoc) {
+            return res.status(404).json({ error: 'No association found.' });
+        }
+
+        if (assoc.logo && !assoc.logo.includes('mock_')) {
+            const filePath = path.join(__dirname, '..', assoc.logo);
+            if (fs.existsSync(filePath)) {
+                try { fs.unlinkSync(filePath); } catch (_) {}
+            }
+        }
+
+        const db = require('../config/db');
+        await db.query('UPDATE associations SET logo = NULL WHERE id = ?', [assoc.id]);
+
+        res.status(200).json({ message: 'Association logo removed successfully.' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ─── Profile Picture Controllers ──────────────────────────────────────────────
+
+
+/**
+ * POST /auth/upload-profile-picture
+ * Accepts multipart/form-data with field 'profilePicture'.
+ * Saves the file path to users.profile_picture.
+ */
+exports.uploadProfilePicture = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image file provided.' });
+        }
+
+        const userId = req.user.id;
+        const relativePath = '/uploads/profiles/' + req.file.filename;
+
+        // Delete old profile picture file if it exists
+        const user = await User.findById(userId);
+        if (user && user.profile_picture && !user.profile_picture.includes('mock_')) {
+            const oldPath = path.join(__dirname, '..', user.profile_picture);
+            if (fs.existsSync(oldPath)) {
+                try { fs.unlinkSync(oldPath); } catch (_) {}
+            }
+        }
+
+        const db = require('../config/db');
+        await db.query('UPDATE users SET profile_picture = ? WHERE id = ?', [relativePath, userId]);
+
+        res.status(200).json({
+            message: 'Profile picture uploaded successfully.',
+            profilePictureUrl: relativePath,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * DELETE /auth/profile-picture
+ * Clears users.profile_picture and deletes the file from disk.
+ */
+exports.deleteProfilePicture = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        if (user.profile_picture && !user.profile_picture.includes('mock_')) {
+            const filePath = path.join(__dirname, '..', user.profile_picture);
+            if (fs.existsSync(filePath)) {
+                try { fs.unlinkSync(filePath); } catch (_) {}
+            }
+        }
+
+        const db = require('../config/db');
+        await db.query('UPDATE users SET profile_picture = NULL WHERE id = ?', [userId]);
+
+        res.status(200).json({ message: 'Profile picture removed successfully.' });
     } catch (err) {
         next(err);
     }

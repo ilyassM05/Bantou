@@ -257,6 +257,18 @@ class AppLocalizations {
       'cdPendingApproval': 'Pending Approval',
       'cdRequestAccess': 'Request Access',
       'cdMemberOfCircle': 'You are a member of this circle',
+      // Posts
+      'posts_feed': 'Posts feed',
+      'share_an_update': 'Share an update with your circle...',
+      'photo': 'Photo',
+      'delete_post': 'Delete Post',
+      'delete_post_confirmation': 'Are you sure you want to delete this post?',
+      'cancel': 'Cancel',
+      'like': 'Like',
+      'comment': 'Comment',
+      'share': 'Share',
+      'create_post': 'Create Post',
+      'error_fetching_posts': 'Error fetching posts',
     },
 
     // ── French ───────────────────────────────────────────────────────────
@@ -492,6 +504,18 @@ class AppLocalizations {
       'cdPendingApproval': 'En attente d\'approbation',
       'cdRequestAccess': 'Demander l\'accès',
       'cdMemberOfCircle': 'Vous êtes membre de ce cercle',
+      // Posts
+      'posts_feed': 'Fil d\'actualité',
+      'share_an_update': 'Partagez une mise à jour avec votre cercle...',
+      'photo': 'Photo',
+      'delete_post': 'Supprimer le post',
+      'delete_post_confirmation': 'Êtes-vous sûr de vouloir supprimer ce post ?',
+      'cancel': 'Annuler',
+      'like': 'J\'aime',
+      'comment': 'Commenter',
+      'share': 'Partager',
+      'create_post': 'Créer un post',
+      'error_fetching_posts': 'Erreur lors de la récupération des posts',
     },
 
     // ── Spanish ──────────────────────────────────────────────────────────
@@ -726,6 +750,18 @@ class AppLocalizations {
       'cdPendingApproval': 'Aprobación pendiente',
       'cdRequestAccess': 'Solicitar acceso',
       'cdMemberOfCircle': 'Eres miembro de este círculo',
+      // Posts
+      'posts_feed': 'Feed de publicaciones',
+      'share_an_update': 'Comparte una actualización con tu círculo...',
+      'photo': 'Foto',
+      'delete_post': 'Eliminar publicación',
+      'delete_post_confirmation': '¿Estás seguro de que deseas eliminar esta publicación?',
+      'cancel': 'Cancelar',
+      'like': 'Me gusta',
+      'comment': 'Comentar',
+      'share': 'Compartir',
+      'create_post': 'Crear publicación',
+      'error_fetching_posts': 'Error al obtener publicaciones',
     },
 
     // ── Arabic ───────────────────────────────────────────────────────────
@@ -960,6 +996,18 @@ class AppLocalizations {
       'cdPendingApproval': 'في انتظار الموافقة',
       'cdRequestAccess': 'طلب انضمام',
       'cdMemberOfCircle': 'أنت عضو في هذه الدائرة',
+      // Posts
+      'posts_feed': 'آخر المنشورات',
+      'share_an_update': 'شارك تحديثاً مع دائرتك...',
+      'photo': 'صورة',
+      'delete_post': 'حذف المنشور',
+      'delete_post_confirmation': 'هل أنت متأكد أنك تريد حذف هذا المنشور؟',
+      'cancel': 'إلغاء',
+      'like': 'إعجاب',
+      'comment': 'تعليق',
+      'share': 'مشاركة',
+      'create_post': 'إنشاء منشور',
+      'error_fetching_posts': 'خطأ في جلب المنشورات',
     },
   };
 
@@ -1224,6 +1272,19 @@ class AppLocalizations {
   String get cdPendingApproval => _t('cdPendingApproval');
   String get cdRequestAccess => _t('cdRequestAccess');
   String get cdMemberOfCircle => _t('cdMemberOfCircle');
+
+  // Posts
+  String get postsFeed => _t('posts_feed');
+  String get shareAnUpdate => _t('share_an_update');
+  String get photo => _t('photo');
+  String get deletePost => _t('delete_post');
+  String get deletePostConfirmation => _t('delete_post_confirmation');
+  String get cancel => _t('cancel');
+  String get like => _t('like');
+  String get comment => _t('comment');
+  String get share => _t('share');
+  String get createPost => _t('create_post');
+  String get errorFetchingPosts => _t('error_fetching_posts');
 
   // Dynamic enum translation
   String translateStatus(String status) {

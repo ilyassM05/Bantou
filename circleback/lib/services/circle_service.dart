@@ -228,7 +228,7 @@ class CircleService {
     }
   }
 
-  Future<Map<String, dynamic>> respondToRequest(int requestId, String status) async {
+  Future<Map<String, dynamic>> respondToRequest(int requestId, String status, {String requestType = 'circle'}) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
@@ -239,7 +239,7 @@ class CircleService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'status': status}),
+        body: jsonEncode({'status': status, 'requestType': requestType}),
       );
 
       final data = jsonDecode(response.body);

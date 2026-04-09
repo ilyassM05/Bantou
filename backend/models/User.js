@@ -134,12 +134,12 @@ const User = {
     /**
      * Update user profile information.
      */
-    async updateProfile(userId, { company, jobTitle, communityRole, city, bio, website, avatarIndex }) {
+    async updateProfile(userId, { name, company, jobTitle, communityRole, city, bio, website, avatarIndex }) {
         await db.query(
             `UPDATE users 
-             SET company = ?, job_title = ?, community_role = ?, city = ?, bio = ?, website = ?, avatar_index = ? 
+             SET name = COALESCE(?, name), company = ?, job_title = ?, community_role = ?, city = ?, bio = ?, website = ?, avatar_index = ? 
              WHERE id = ?`,
-            [company, jobTitle, communityRole, city, bio, website, avatarIndex, userId]
+            [name || null, company, jobTitle, communityRole, city, bio, website, avatarIndex, userId]
         );
     },
 

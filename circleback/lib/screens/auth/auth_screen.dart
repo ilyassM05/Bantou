@@ -7,6 +7,7 @@ import '../../services/biometric_service.dart';
 import '../../services/http_auth_service.dart';
 import '../auth/forgot_password_screen.dart';
 import '../auth/create_association_screen.dart';
+import '../auth/pending_approval_screen.dart';
 import '../main_shell_screen.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/language_picker.dart';
@@ -121,6 +122,11 @@ class _AuthScreenState extends State<AuthScreen>
   /// - First-time creator → Association setup → Profile setup → Dashboard
   /// - Returning user → Dashboard directly
   void _goToCorrectScreen() {
+    if (HttpAuthService.currentUserStatus == 'en attente') {
+      Navigator.pushReplacementNamed(context, PendingApprovalScreen.routeName);
+      return;
+    }
+
     // Both signals must agree before sending someone to the association form.
     final isInvitedAdmin = HttpAuthService.currentIsInvitedAdmin ||
         HttpAuthService.currentUserRole == 'admin';
@@ -354,7 +360,7 @@ class _AuthScreenState extends State<AuthScreen>
           ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: const EdgeInsets.all(3),
+        indicatorPadding: EdgeInsets.zero,
         labelColor: Colors.white,
         unselectedLabelColor: AppColors.textSecondary,
         labelStyle: GoogleFonts.inter(

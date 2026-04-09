@@ -11,6 +11,7 @@ import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/profile_setup_screen.dart';
 import 'screens/auth/create_association_screen.dart';
 import 'screens/auth/edit_profile_screen.dart';
+import 'screens/auth/pending_approval_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/home/sa_dashboard_screen.dart';
 import 'screens/main_shell_screen.dart';
@@ -154,6 +155,7 @@ class _BantouAppState extends State<BantouApp> {
               const CreateAssociationScreen(),
           ProfileSetupScreen.routeName: (_) => const ProfileSetupScreen(),
           EditProfileScreen.routeName: (_) => const EditProfileScreen(),
+          PendingApprovalScreen.routeName: (_) => const PendingApprovalScreen(),
           HomeScreen.routeName: (_) => const HomeScreen(),
           SaDashboardScreen.routeName: (_) => const SaDashboardScreen(),
           MainShellScreen.routeName: (_) => const MainShellScreen(),

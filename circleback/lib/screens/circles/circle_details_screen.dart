@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,8 +5,10 @@ import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/auth_text_field.dart';
+import '../../widgets/user_avatar.dart';
 import '../../services/circle_service.dart';
 import '../../services/http_auth_service.dart';
+import '../posts/user_profile_screen.dart';
 
 /// Screen representing the details of a specific Circle.
 class CircleDetailsScreen extends StatefulWidget {
@@ -925,6 +926,8 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
                             final name = p['name'] ?? 'Unknown';
                             final hasJoined = p['hasJoined'] == true;
                             final joinedAtStr = p['joinedAt'] as String?;
+                            final profilePic = p['profilePicture'] as String?;
+                            final assocLogo = p['associationLogo'] as String?;
                             
                             String joinedDate = '';
                             if (hasJoined && joinedAtStr != null) {
@@ -934,49 +937,64 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
                               } catch (_) {}
                             }
 
-                            final initials = name.trim().isNotEmpty ? name.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase() : '?';
-                            
-                            return Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(color: AppColors.borderSoft),
-                                borderRadius: BorderRadius.circular(12),
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                ctx,
+                                MaterialPageRoute(
+                                  builder: (_) => UserProfileScreen(
+                                    userId: p['id'] as int,
+                                    userName: name,
+                                  ),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                    child: Text(initials, style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                                        if (hasJoined && joinedDate.isNotEmpty)
-                                          Text('Joined $joinedDate', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
-                                      ],
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(color: AppColors.borderSoft),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    UserAvatar(
+                                      profilePictureUrl: profilePic,
+                                      associationLogoUrl: assocLogo,
+                                      name: name,
+                                      size: 44,
+                                      animate: true,
+                                      fallbackColor: AppColors.primary,
                                     ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: hasJoined ? const Color(0xFFE6F4EA) : const Color(0xFFF1F3F4),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: hasJoined ? const Color(0xFFCEEAD6) : const Color(0xFFDADCE0)),
-                                    ),
-                                    child: Text(
-                                      hasJoined ? AppLocalizations.of(context).cdJoined : AppLocalizations.of(context).cdNotJoined,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: hasJoined ? const Color(0xFF137333) : const Color(0xFF5F6368),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                          if (hasJoined && joinedDate.isNotEmpty)
+                                            Text('Joined $joinedDate', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                                        ],
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: hasJoined ? const Color(0xFFE6F4EA) : const Color(0xFFF1F3F4),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: hasJoined ? const Color(0xFFCEEAD6) : const Color(0xFFDADCE0)),
+                                      ),
+                                      child: Text(
+                                        hasJoined ? AppLocalizations.of(context).cdJoined : AppLocalizations.of(context).cdNotJoined,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: hasJoined ? const Color(0xFF137333) : const Color(0xFF5F6368),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
+                                  ],
+                                ),
                               ),
                             );
                           },

@@ -43,7 +43,7 @@ const Association = {
      * Insert or update an association for a given user.
      * Uses INSERT ... ON DUPLICATE KEY UPDATE to upsert.
      * @param {number} userId
-     * @param {object} data — { name, address, logoUrl, contactEmails, contactPhones, adminEmails, facebookUrl, linkedinUrl, twitterUrl }
+     * @param {object} data — { name, address, logoUrl, contactEmails, contactPhones, adminEmails, memberEmails, facebookUrl, linkedinUrl, twitterUrl }
      */
     async createOrUpdate(userId, {
         name,
@@ -52,14 +52,15 @@ const Association = {
         contactEmails,
         contactPhones,
         adminEmails,
+        memberEmails,
         facebookUrl,
         linkedinUrl,
         twitterUrl,
     }) {
         await db.query(
             `INSERT INTO associations
-                (creator_id, name, address, logo, contact_emails, contact_phones, admin_emails, fb_link, linkedin_link, twitter_link)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (creator_id, name, address, logo, contact_emails, contact_phones, admin_emails, member_emails, fb_link, linkedin_link, twitter_link)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                 name           = VALUES(name),
                 address        = VALUES(address),
@@ -67,6 +68,7 @@ const Association = {
                 contact_emails = VALUES(contact_emails),
                 contact_phones = VALUES(contact_phones),
                 admin_emails   = VALUES(admin_emails),
+                member_emails  = VALUES(member_emails),
                 fb_link        = VALUES(fb_link),
                 linkedin_link  = VALUES(linkedin_link),
                 twitter_link   = VALUES(twitter_link)`,
@@ -78,6 +80,7 @@ const Association = {
                 contactEmails ? JSON.stringify(contactEmails) : null,
                 contactPhones ? JSON.stringify(contactPhones) : null,
                 adminEmails ? JSON.stringify(adminEmails) : null,
+                memberEmails ? JSON.stringify(memberEmails) : null,
                 facebookUrl || null,
                 linkedinUrl || null,
                 twitterUrl || null,

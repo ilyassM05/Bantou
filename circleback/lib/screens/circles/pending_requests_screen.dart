@@ -46,7 +46,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     }
   }
 
-  Future<void> _handleRequest(int requestId, String status) async {
+  Future<void> _handleRequest(int requestId, String status, String requestType) async {
     try {
       showDialog(
         context: context,
@@ -54,7 +54,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
 
-      await CircleService().respondToRequest(requestId, status);
+      await CircleService().respondToRequest(requestId, status, requestType: requestType);
       
       if (mounted) {
         Navigator.pop(context); // close dialog
@@ -118,6 +118,9 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
   }
 
   Widget _buildRequestCard(Map<String, dynamic> req) {
+    final isAssociation = req['requestType'] == 'association';
+    final requestLabel = isAssociation ? 'Association Join Request' : 'Circle Access Request';
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -136,28 +139,64 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Circle: ${req['circle_name'] ?? 'Unknown'}',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppColors.textPrimary,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isAssociation ? Colors.blue.shade50 : Colors.purple.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isAssociation ? Colors.blue.shade200 : Colors.purple.shade200),
+            ),
+            child: Text(
+              requestLabel,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isAssociation ? Colors.blue.shade700 : Colors.purple.shade700,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '${AppLocalizations.of(context).prAdmin}: ${req['user_name'] ?? 'Unknown'} (${req['user_email'] ?? ''})',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: AppColors.textSecondary,
+          const SizedBox(height: 12),
+          if (isAssociation) ...[
+             Text(
+              'User: ${req['user_name'] ?? 'Unknown'} (${req['user_email'] ?? ''})',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+             Text(
+              'Invited by: ${req['inviter_name'] ?? 'Unknown'}',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ] else ...[
+             Text(
+              'Circle: ${req['circle_name'] ?? 'Unknown'}',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+             Text(
+              '${AppLocalizations.of(context).prAdmin}: ${req['user_name'] ?? 'Unknown'} (${req['user_email'] ?? ''})',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _handleRequest(req['id'], 'Rejected'),
+                  onPressed: () => _handleRequest(req['id'], 'Rejected', req['requestType'] ?? 'circle'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
@@ -169,7 +208,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => _handleRequest(req['id'], 'Approved'),
+                  onPressed: () => _handleRequest(req['id'], 'Approved', req['requestType'] ?? 'circle'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

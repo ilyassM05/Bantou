@@ -41,6 +41,9 @@ class _CreateAssociationScreenState extends State<CreateAssociationScreen>
   final List<TextEditingController> _adminEmailCtrls = [
     TextEditingController(),
   ];
+  final List<TextEditingController> _memberEmailCtrls = [
+    TextEditingController(),
+  ];
 
   // Social
   final _fbCtrl = TextEditingController();
@@ -72,6 +75,7 @@ class _CreateAssociationScreenState extends State<CreateAssociationScreen>
     for (final c in _emailCtrls) c.dispose();
     for (final c in _phoneCtrls) c.dispose();
     for (final c in _adminEmailCtrls) c.dispose();
+    for (final c in _memberEmailCtrls) c.dispose();
     _fbCtrl.dispose();
     _linkedInCtrl.dispose();
     _xCtrl.dispose();
@@ -120,6 +124,16 @@ class _CreateAssociationScreenState extends State<CreateAssociationScreen>
     });
   }
 
+  void _addMemberEmail() =>
+      setState(() => _memberEmailCtrls.add(TextEditingController()));
+  void _removeMemberEmail(int i) {
+    if (_memberEmailCtrls.length <= 1) return;
+    setState(() {
+      _memberEmailCtrls[i].dispose();
+      _memberEmailCtrls.removeAt(i);
+    });
+  }
+
   // ── Submit ───────────────────────────────────────────────────────────────
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -138,6 +152,10 @@ class _CreateAssociationScreenState extends State<CreateAssociationScreen>
           .map((c) => c.text.trim())
           .where((s) => s.isNotEmpty)
           .toList();
+      final memberEmails = _memberEmailCtrls
+          .map((c) => c.text.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
 
       await HttpAuthService().saveAssociation({
         'name': _nameCtrl.text.trim(),
@@ -145,6 +163,7 @@ class _CreateAssociationScreenState extends State<CreateAssociationScreen>
         'contactEmails': emails,
         'contactPhones': phones,
         'adminEmails': adminEmails,
+        'memberEmails': memberEmails,
         'facebookUrl': _fbCtrl.text.trim(),
         'linkedinUrl': _linkedInCtrl.text.trim(),
         'twitterUrl': _xCtrl.text.trim(),
@@ -339,6 +358,55 @@ class _CreateAssociationScreenState extends State<CreateAssociationScreen>
                                 _buildAddButton(
                                   l.caAddAdminEmailBtn,
                                   _addAdminEmail,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // ── Member Emails ───────────────────────────
+                            _buildCard(
+                              icon: Icons.group_add_outlined,
+                              title: 'Member Emails', // Or l.caMemberEmailsTitle if localized
+                              iconColor: const Color(0xFF10B981),
+                              children: [
+                                ..._memberEmailCtrls.asMap().entries.map(
+                                  (e) => _buildDynamicRow(
+                                    index: e.key,
+                                    ctrl: e.value,
+                                    hint: 'member@example.com', // Or l.caMemberEmailHint
+                                    icon: Icons.person_add_outlined,
+                                    keyboardType: TextInputType.emailAddress,
+                                    removeLabel: l.caRemoveBtn,
+                                    canRemove:
+                                        _memberEmailCtrls.length > 1 ||
+                                        (e.key == 0 &&
+                                            _memberEmailCtrls[0]
+                                                .text
+                                                .isNotEmpty),
+                                    onRemove: () {
+                                      if (_memberEmailCtrls.length == 1) {
+                                        _memberEmailCtrls[0].clear();
+                                      } else {
+                                        _removeMemberEmail(e.key);
+                                      }
+                                    },
+                                    isFirst: e.key == 0,
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty)
+                                        return null;
+                                      final RegExp emailExp = RegExp(
+                                        r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+',
+                                      );
+                                      if (!emailExp.hasMatch(v.trim())) {
+                                        return 'Invalid email format';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildAddButton(
+                                  'Add Member Email', // Or l.caAddMemberEmailBtn
+                                  _addMemberEmail,
                                 ),
                               ],
                             ),

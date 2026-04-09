@@ -329,17 +329,51 @@ exports.requestAccess = async (req, res) => {
 exports.getPendingRequests = async (req, res) => {
     try {
         const userId = req.user.id;
+        const role = req.user.role;
+
+        // Members have no access
+        if (role === 'member') {
+            return res.status(403).json({ error: 'Members cannot view requests' });
+        }
 
         const association = await Association.findByUserId(userId);
         if (!association) {
             return res.status(403).json({ error: 'No association found' });
         }
 
-        if (association.creator_id !== userId) {
-            return res.status(403).json({ error: 'Only association owners can view pending requests' });
-        }
+        const db = require('../config/db');
 
-        const pendingRequests = await CircleAccessRequest.findByAssociationIdPending(association.id);
+        // Association Join Requests (Pending Members) — visible to both SA and admin
+        const [memberRequests] = await db.query(
+            `SELECT u.id as user_id, u.name as user_name, u.email as user_email, u.status, u.created_at, 
+                    mi.invited_by, inv.name as inviter_name 
+             FROM users u
+             JOIN association_members am ON u.id = am.user_id
+             JOIN member_invitations mi ON mi.invitee_email = u.email AND mi.association_id = am.association_id
+             LEFT JOIN users inv ON mi.invited_by = inv.id
+             WHERE am.association_id = ? AND u.status = 'en attente'`,
+             [association.id]
+        );
+
+        let pendingRequests = [
+            ...memberRequests.map(r => ({ ...r, requestType: 'association', id: r.user_id }))
+        ];
+
+        // Circle Access Requests — visible to SA only
+        if (role === 'SA') {
+            const [circleRequests] = await db.query(
+                `SELECT car.*, c.name as circle_name, u.name as user_name, u.email as user_email
+                 FROM circle_access_requests car 
+                 JOIN circles c ON car.circle_id = c.id 
+                 JOIN users u ON car.user_id = u.id 
+                 WHERE c.association_id = ? AND car.status = 'Pending'`,
+                 [association.id]
+            );
+            pendingRequests = [
+                ...circleRequests.map(r => ({ ...r, requestType: 'circle' })),
+                ...pendingRequests,
+            ];
+        }
 
         res.status(200).json({ pendingRequests });
     } catch (error) {
@@ -351,11 +385,43 @@ exports.getPendingRequests = async (req, res) => {
 exports.respondToRequest = async (req, res) => {
     try {
         const userId = req.user.id;
+        const role = req.user.role;
         const requestId = req.params.requestId;
-        const { status } = req.body; // 'Approved' or 'Rejected'
+        const { status, requestType } = req.body; // 'Approved' or 'Rejected', requestType: 'circle' | 'association'
 
         if (!['Approved', 'Rejected'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        // Members have no access
+        if (role === 'member') {
+            return res.status(403).json({ error: 'Members cannot respond to requests' });
+        }
+
+        // Admins can only handle association (member invitation) requests
+        if (role === 'admin' && requestType !== 'association') {
+            return res.status(403).json({ error: 'Admins can only approve or decline member invitations' });
+        }
+
+        const association = await Association.findByUserId(userId);
+        if (!association) return res.status(403).json({ error: 'No association found' });
+
+        const db = require('../config/db');
+
+        if (requestType === 'association') {
+            // Handle member joining — allowed for both SA and admin
+            if (status === 'Approved') {
+                await db.query('UPDATE users SET status = ? WHERE id = ?', ['actif', requestId]);
+            } else {
+                await db.query('DELETE FROM association_members WHERE user_id = ? AND association_id = ?', [requestId, association.id]);
+                await db.query('DELETE FROM users WHERE id = ?', [requestId]);
+            }
+            return res.status(200).json({ message: `Association Join Request ${status.toLowerCase()} successfully` });
+        }
+
+        // Circle Access Requests — SA only
+        if (role !== 'SA') {
+            return res.status(403).json({ error: 'Only Super Admins can respond to circle access requests' });
         }
 
         const accessRequest = await CircleAccessRequest.findById(requestId);
@@ -364,9 +430,7 @@ exports.respondToRequest = async (req, res) => {
         }
 
         const circle = await Circle.findById(accessRequest.circle_id);
-        const association = await Association.findByUserId(userId);
-
-        if (!association || association.id !== circle.association_id || association.creator_id !== userId) {
+        if (!association || association.id !== circle.association_id) {
             return res.status(403).json({ error: 'Unauthorized to respond to this request' });
         }
 
@@ -482,7 +546,7 @@ exports.inviteToCircle = async (req, res) => {
             const invitationId = invRow.insertId;
 
             const inviteToken = jwt.sign(
-                { email: email.trim().toLowerCase(), associationId: association.id, purpose: 'member_invite', invitationId },
+                { email: email.trim().toLowerCase(), associationId: association.id, purpose: 'member_invite', invitationId, inviterRole },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -569,6 +633,7 @@ exports.getCircleParticipants = async (req, res) => {
                 u.name, 
                 u.email, 
                 u.role, 
+                u.profile_picture,
                 IF(cm.circle_id IS NOT NULL, 1, 0) as has_joined,
                 cm.joined_at
             FROM users u
@@ -580,13 +645,18 @@ exports.getCircleParticipants = async (req, res) => {
 
         const [participants] = await db.query(query, [circleId, association.id]);
 
+        // Attach association logo for animation
+        const associationLogo = association.logo || null;
+
         const formattedParticipants = participants.map(p => ({
             id: p.id,
             name: p.name,
             email: p.email,
             role: p.role,
             hasJoined: p.has_joined === 1,
-            joinedAt: p.joined_at
+            joinedAt: p.joined_at,
+            profilePicture: p.profile_picture || null,
+            associationLogo,
         }));
 
         res.status(200).json({ participants: formattedParticipants });
@@ -595,6 +665,7 @@ exports.getCircleParticipants = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch circle participants' });
     }
 };
+
 
 async function checkCirclePhotoAccess(userId, userRole, circleId) {
     const Circle = require('../models/Circle');
