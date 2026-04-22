@@ -460,14 +460,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       });
 
       final isSA = HttpAuthService.currentUserRole == 'SA';
-      final isRestrictedAdmin = !isSA && 
-          (HttpAuthService.currentUserRole == 'admin' ||
-          HttpAuthService.currentIsInvitedAdmin) &&
-          HttpAuthService.currentUserNeedsSetup;
+      // Only Super Admins can modify association information.
+      // Admins and Members always have read-only access to association data.
+      final canEditAssociation = isSA;
 
-      // 2. Save Association (only if not restricted)
+      // 2. Save Association (only if can edit)
       bool assocSuccess = true;
-      if (!isRestrictedAdmin) {
+      if (canEditAssociation) {
         final emails = _contactEmailCtrls
             .map((c) => c.text.trim())
             .where((s) => s.isNotEmpty)
@@ -568,10 +567,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     final l = AppLocalizations.of(context);
     const screenTitle = 'Edit Profile';
     final isSA = HttpAuthService.currentUserRole == 'SA';
-    final isRestrictedAdmin = !isSA && 
-        (HttpAuthService.currentUserRole == 'admin' ||
-        HttpAuthService.currentIsInvitedAdmin) &&
-        HttpAuthService.currentUserNeedsSetup;
+    // Only Super Admins can modify association information.
+    // Admins and Members always see the section as read-only.
+    final canEditAssociation = isSA;
+    final isRestrictedAdmin = !canEditAssociation;
 
     return Scaffold(
       body: Container(
@@ -665,6 +664,43 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                               position: _slideAnim,
                               child: Column(
                                 children: [
+                                  // Association Section Header / Banner
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: isRestrictedAdmin
+                                          ? Colors.blueAccent.withValues(alpha: 0.1)
+                                          : AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isRestrictedAdmin
+                                            ? Colors.blueAccent.withValues(alpha: 0.3)
+                                            : AppColors.primary.withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isRestrictedAdmin ? Icons.info_outline : Icons.business_outlined,
+                                          color: isRestrictedAdmin ? Colors.blueAccent : AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            isRestrictedAdmin
+                                                ? 'Association Information (Read-Only)'
+                                                : 'Association Information',
+                                            style: GoogleFonts.inter(
+                                              color: isRestrictedAdmin ? Colors.blueAccent : AppColors.primary,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   // Logo
                                   _buildCard(
                                     icon: Icons.image_outlined,
@@ -948,8 +984,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                   _buildCompanyLogoPicker(),
                                   const SizedBox(height: 16),
                                   AuthTextField(
-                                    label: l.caNameLabel,
-                                    hint: 'Your full name',
+                                    label: l.fullNameLabel,
+                                    hint: l.fullNameHint,
                                     icon: Icons.person_outline,
                                     controller: _nameCtrl,
                                   ),

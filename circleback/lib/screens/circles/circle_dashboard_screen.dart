@@ -10,6 +10,7 @@ import 'circle_details_screen.dart';
 import 'create_circle_screen.dart';
 import 'pending_requests_screen.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/invite_member_sheet.dart';
 
 /// The actual Circle Dashboard showing statistics and active circles.
 class CircleDashboardScreen extends StatefulWidget {
@@ -157,42 +158,17 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
   }
 
   void _showInviteMemberDialog() {
-    final emailCtrl = TextEditingController();
-    bool inviting = false;
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setInnerState) => AlertDialog(
-          title: Text(AppLocalizations.of(context).cdInviteAppMember),
-          content: TextField(
-            controller: emailCtrl,
-            decoration: InputDecoration(labelText: AppLocalizations.of(context).cdEmailAddress, prefixIcon: const Icon(Icons.person_add_rounded)),
-            keyboardType: TextInputType.emailAddress,
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context).cdCancel)),
-            ElevatedButton(
-              onPressed: inviting ? null : () async {
-                final email = emailCtrl.text.trim();
-                if (email.isEmpty) return;
-                setInnerState(() => inviting = true);
-                try {
-                  final msg = await HttpAuthService().inviteMember(email);
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: const Color(0xFF34D399)));
-                  }
-                } catch (e) {
-                  if (ctx.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red));
-                } finally {
-                  if (ctx.mounted) setInnerState(() => inviting = false);
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: inviting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(AppLocalizations.of(context).cdSendInvite, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => InviteMemberSheet(
+        onInvite: (email) async {
+          await HttpAuthService().inviteMember(email);
+        },
       ),
     );
   }
@@ -219,10 +195,8 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                 : Column(
                     children: [
                       _buildHeader(context),
-                      if ((HttpAuthService.currentUserRole == 'admin' ||
-                           HttpAuthService.currentIsInvitedAdmin) &&
-                          HttpAuthService.currentUserNeedsSetup)
-                        _buildRestrictedAdminBanner(context),
+                      // No setup banner needed — admins stay as admin and don't need to upgrade.
+
                       Expanded(
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -301,9 +275,10 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                     ],
                   ),
         ),
-      floatingActionButton: HttpAuthService.currentUserRole != 'SA'
-          ? null 
-          : FloatingActionButton.extended(
+      floatingActionButton: (HttpAuthService.currentUserRole == 'SA' ||
+          HttpAuthService.currentUserRole == 'admin' ||
+          HttpAuthService.currentIsInvitedAdmin)
+          ? FloatingActionButton.extended(
               onPressed: () async {
                 final result = await Navigator.pushNamed(context, CreateCircleScreen.routeName);
                 if (result == true) {
@@ -320,69 +295,8 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                   fontSize: 15,
                 ),
               ),
-            ),
-    );
-  }
-
-  Widget _buildRestrictedAdminBanner(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: Colors.amber.shade100,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  AppLocalizations.of(context).cdActionRequired,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.amber.shade900,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            AppLocalizations.of(context).cdActionMsg,
-            style: GoogleFonts.inter(
-              color: Colors.amber.shade900,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/edit-profile').then((_) {
-                  setState(() {});
-                });
-              },
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                backgroundColor: Colors.amber,
-              ),
-              child: Text(
-                AppLocalizations.of(context).cdCompleteProfile,
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+            )
+          : null,
     );
   }
 

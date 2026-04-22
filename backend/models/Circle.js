@@ -106,6 +106,18 @@ const Circle = {
             [id]
         );
         return rows[0] || null;
+    },
+
+    /**
+     * Delete a circle by its ID
+     */
+    async delete(id) {
+        await db.query('DELETE FROM circle_photos WHERE circle_id = ?', [id]);
+        await db.query('DELETE FROM circle_members WHERE circle_id = ?', [id]);
+        await db.query('DELETE FROM circle_access_requests WHERE circle_id = ?', [id]);
+        await db.query('DELETE FROM meetings WHERE circle_id = ?', [id]);
+        await db.query('DELETE FROM member_invitations WHERE circle_id = ?', [id]);
+        await db.query('DELETE FROM circles WHERE id = ?', [id]);
     }
 };
 

@@ -50,24 +50,139 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     }
   }
 
-  Future<void> _takeAndUploadPhoto() async {
+  /// Shows a bottom sheet so the user can choose between camera and gallery.
+  void _showPhotoSourceSheet() {
     if (_isUploadingPhoto) return;
-    
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Text(
+                'Add Photo',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Choose how you would like to add a photo',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              // Take Photo option
+              _PhotoSourceTile(
+                icon: Icons.camera_alt_rounded,
+                iconColor: const Color(0xFF4285F4),
+                iconBgColor: const Color(0xFFE8F0FE),
+                title: 'Take Photo',
+                subtitle: 'Open the camera to capture a new photo',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 12),
+              // Choose from Gallery option
+              _PhotoSourceTile(
+                icon: Icons.photo_library_rounded,
+                iconColor: const Color(0xFF34A853),
+                iconBgColor: const Color(0xFFE6F4EA),
+                title: 'Choose from Gallery',
+                subtitle: 'Select an existing photo from your device',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 12),
+              // Cancel
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Picks an image from [source] and uploads it to the circle.
+  Future<void> _pickAndUploadPhoto(ImageSource source) async {
+    if (_isUploadingPhoto) return;
+
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 70,
+      source: source,
+      // Use high quality; gallery images are already compressed by the OS.
+      imageQuality: source == ImageSource.camera ? 85 : null,
     );
 
     if (image == null) return;
 
     setState(() => _isUploadingPhoto = true);
-    
+
     try {
-      await CircleService().uploadCirclePhoto(_circleData!['id'] as int, image.path);
+      final result = await CircleService().uploadCirclePhoto(
+        _circleData!['id'] as int,
+        image.path,
+      );
       if (mounted) {
+        final isPending = result['status'] == 'pending';
+        final msg = isPending
+            ? AppLocalizations.of(context).cdPhotoSubmittedForReview
+            : AppLocalizations.of(context).cdPhotoUploadedSuccess;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).cdPhotoUploadedSuccess), backgroundColor: AppColors.primary),
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: isPending ? const Color(0xFFF9A825) : AppColors.primary,
+          ),
         );
         _fetchPhotos();
       }
@@ -83,6 +198,13 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
       }
     }
   }
+
+  /// True when the current user has moderation privileges (Admin or Super Admin).
+  bool get _isAdminUser =>
+      HttpAuthService.currentUserRole == 'SA' ||
+      HttpAuthService.currentUserRole == 'admin' ||
+      HttpAuthService.currentIsInvitedAdmin ||
+      _circleData?['isAdmin'] == true;
 
   @override
   Widget build(BuildContext context) {
@@ -105,11 +227,16 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (_circleData?['isAdmin'] == true)
+          if (_circleData?['isAdmin'] == true) ...[
             IconButton(
               icon: const Icon(Icons.edit, color: AppColors.textPrimary),
               onPressed: _showEditModal,
             ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              onPressed: _confirmDelete,
+            ),
+          ],
         ],
       ),
       body: SingleChildScrollView(
@@ -144,6 +271,51 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         ),
       ),
     );
+  }
+
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Circle', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        content: Text('Are you sure you want to delete this circle? This action cannot be undone.', style: GoogleFonts.inter()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteCircle();
+            },
+            child: Text('Delete', style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteCircle() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+      await CircleService().deleteCircle(_circleData!['id'] as int);
+      if (mounted) {
+        Navigator.pop(context); // pop loading dialog
+        Navigator.pop(context, true); // pop screen, return true to refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // pop loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildHeaderInfo(BuildContext context) {
@@ -439,9 +611,14 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
   }
 
   Widget _buildPhotosSection() {
+    final pendingPhotos = _photos.where((p) => p['status'] == 'pending').toList();
+    final approvedPhotos = _photos.where((p) => p['status'] != 'pending').toList();
+    final circleId = _circleData!['id'] as int;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Header row ────────────────────────────────────────────────
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -461,7 +638,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
               )
             else
               TextButton.icon(
-                onPressed: _takeAndUploadPhoto,
+                onPressed: _showPhotoSourceSheet,
                 icon: const Icon(Icons.camera_alt, size: 16, color: Color(0xFF4285F4)),
                 label: Text(
                   AppLocalizations.of(context).cdAddPhoto,
@@ -479,7 +656,15 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        if (_photos.isEmpty)
+
+        // ── Pending-photos moderation panel (Admin / SA only) ─────────
+        if (_isAdminUser && pendingPhotos.isNotEmpty) ...[
+          _buildModerationPanel(pendingPhotos, circleId),
+          const SizedBox(height: 20),
+        ],
+
+        // ── Approved gallery ──────────────────────────────────────────
+        if (approvedPhotos.isEmpty)
           Container(
             padding: const EdgeInsets.all(24),
             width: double.infinity,
@@ -510,11 +695,12 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
             height: 120,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: _photos.length,
+              itemCount: approvedPhotos.length,
               separatorBuilder: (context, index) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
-                final photoUrl = 'http://10.0.2.2:3000${_photos[index]['photo_url']}';
-                final uploader = _photos[index]['uploader_name'] ?? 'Someone';
+                final photo = approvedPhotos[index];
+                final photoUrl = 'http://10.0.2.2:3000${photo['photo_url']}';
+                final uploader = photo['uploader_name'] ?? 'Someone';
                 return Stack(
                   children: [
                     ClipRRect(
@@ -540,11 +726,18 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(16),
+                            bottomRight: Radius.circular(16),
+                          ),
                         ),
                         child: Text(
                           uploader,
-                          style: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w500),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -557,6 +750,276 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           ),
       ],
     );
+  }
+
+  // ── Moderation panel widget ───────────────────────────────────────────────
+  Widget _buildModerationPanel(List<dynamic> pendingPhotos, int circleId) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFE082)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              children: [
+                const Icon(Icons.pending_actions_rounded, color: Color(0xFFF9A825), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context).cdPendingPhotos(
+                      pendingPhotos.length,
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFE65100),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9A825),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${pendingPhotos.length}',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFFFE082)),
+
+          // List of pending photo cards
+          ...pendingPhotos.map((photo) {
+            final photoId = photo['id'] as int;
+            final photoUrl = 'http://10.0.2.2:3000${photo['photo_url']}';
+            final uploader = photo['uploader_name'] ?? 'Someone';
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFE082)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Thumbnail with "PENDING" badge
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            bottomLeft: Radius.circular(12),
+                          ),
+                          child: Image.network(
+                            photoUrl,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => Container(
+                              width: 72,
+                              height: 72,
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.broken_image, color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9A825),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              AppLocalizations.of(context).cdPendingBadge,
+                              style: GoogleFonts.inter(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Uploader name
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context).cdUploadedBy,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              uploader,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              AppLocalizations.of(context).cdAwaitingApproval,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: const Color(0xFFF9A825),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Action buttons
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Approve
+                          _ModerationActionButton(
+                            icon: Icons.check_circle_rounded,
+                            color: const Color(0xFF2E7D32),
+                            backgroundColor: const Color(0xFFE8F5E9),
+                            tooltip: AppLocalizations.of(context).cdApprovePhoto,
+                            onTap: () => _handleApprove(circleId, photoId),
+                          ),
+                          const SizedBox(height: 8),
+                          // Reject
+                          _ModerationActionButton(
+                            icon: Icons.cancel_rounded,
+                            color: const Color(0xFFC62828),
+                            backgroundColor: const Color(0xFFFFEBEE),
+                            tooltip: AppLocalizations.of(context).cdRejectPhoto,
+                            onTap: () => _handleReject(circleId, photoId),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleApprove(int circleId, int photoId) async {
+    try {
+      await CircleService().approveCirclePhoto(circleId, photoId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).cdPhotoApproved),
+            backgroundColor: const Color(0xFF2E7D32),
+          ),
+        );
+        _fetchPhotos();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleReject(int circleId, int photoId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          AppLocalizations.of(context).cdRejectPhotoTitle,
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          AppLocalizations.of(context).cdRejectPhotoMessage,
+          style: GoogleFonts.inter(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              AppLocalizations.of(context).cdCancelBtn,
+              style: GoogleFonts.inter(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              AppLocalizations.of(context).cdRejectBtn,
+              style: GoogleFonts.inter(
+                color: Colors.red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await CircleService().rejectCirclePhoto(circleId, photoId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).cdPhotoRejected),
+            backgroundColor: Colors.red,
+          ),
+        );
+        _fetchPhotos();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildParticipantsSection() {
@@ -1008,3 +1471,115 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
   }
 }
 
+/// Small circular action button used in the photo moderation panel.
+class _ModerationActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color backgroundColor;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _ModerationActionButton({
+    required this.icon,
+    required this.color,
+    required this.backgroundColor,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+/// A tappable option tile used inside the "Add Photo" source-selection sheet.
+class _PhotoSourceTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBgColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _PhotoSourceTile({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBgColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE8EAED)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: iconColor, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

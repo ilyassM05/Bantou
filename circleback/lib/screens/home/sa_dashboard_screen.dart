@@ -23,10 +23,6 @@ class _SaDashboardScreenState extends State<SaDashboardScreen>
   Map<String, dynamic>? _dashboardData;
   List<dynamic> _pendingInvitations = [];
 
-  // Invite member dialog state
-  final _inviteEmailCtrl = TextEditingController();
-  bool _inviting = false;
-
   @override
   void initState() {
     super.initState();
@@ -37,7 +33,6 @@ class _SaDashboardScreenState extends State<SaDashboardScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _inviteEmailCtrl.dispose();
     super.dispose();
   }
 
@@ -55,31 +50,6 @@ class _SaDashboardScreenState extends State<SaDashboardScreen>
       }
     } catch (e) {
       if (mounted) setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
-    }
-  }
-
-  Future<void> _inviteMember() async {
-    final email = _inviteEmailCtrl.text.trim();
-    if (email.isEmpty) return;
-    setState(() => _inviting = true);
-    try {
-      final msg = await _authService.inviteMember(email);
-      _inviteEmailCtrl.clear();
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: const Color(0xFF34D399)),
-        );
-        _loadData();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _inviting = false);
     }
   }
 
@@ -102,29 +72,18 @@ class _SaDashboardScreenState extends State<SaDashboardScreen>
   }
 
   void _showInviteDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Invite Member', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: _inviteEmailCtrl,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: 'Email address',
-            prefixIcon: const Icon(Icons.email_outlined),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: _inviting ? null : _inviteMember,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: _inviting
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Send Invite', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _InviteMemberSheet(
+        onInvite: (email) async {
+          await _authService.inviteMember(email);
+          _loadData(); // to refresh the lists independently
+        },
       ),
     );
   }
@@ -517,6 +476,174 @@ class _ErrorView extends StatelessWidget {
           Text(message, textAlign: TextAlign.center, style: GoogleFonts.inter(color: Colors.red)),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+}
+
+class _InviteMemberSheet extends StatefulWidget {
+  final Future<void> Function(String email) onInvite;
+
+  const _InviteMemberSheet({required this.onInvite});
+
+  @override
+  State<_InviteMemberSheet> createState() => _InviteMemberSheetState();
+}
+
+class _InviteMemberSheetState extends State<_InviteMemberSheet> {
+  final _emailCtrl = TextEditingController();
+  bool _isLoading = false;
+  bool _isSuccess = false;
+
+  bool get _isValidEmail {
+    final text = _emailCtrl.text.trim();
+    if (text.isEmpty) return false;
+    final emailExp = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
+    return emailExp.hasMatch(text);
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleInvite() async {
+    if (!_isValidEmail) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.onInvite(_emailCtrl.text.trim());
+      setState(() {
+        _isSuccess = true;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isSuccess) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_outline, color: Color(0xFF34D399), size: 64),
+            const SizedBox(height: 16),
+            Text('Invitation sent successfully', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text('An email has been sent to ${_emailCtrl.text.trim()} with instructions to sign up.', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.5)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  _emailCtrl.clear();
+                  setState(() => _isSuccess = false);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Invite Another Member', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Close', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 24,
+        right: 24,
+        top: 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.person_add_outlined, color: AppColors.primary),
+              ),
+              const SizedBox(width: 16),
+              Text('Invite a Member', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.close, color: AppColors.textSecondary), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Send an invitation to join your association. They will receive an email with instructions to sign up.',
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+          ),
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+            onChanged: (_) => setState(() {}),
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Enter member email address',
+              hintStyle: GoogleFonts.inter(color: AppColors.textHint, fontSize: 14),
+              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textHint),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.borderSoft)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.borderSoft)),
+              fillColor: AppColors.inputFill,
+              filled: true,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isValidEmail && !_isLoading ? _handleInvite : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: _isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text('Send Invitation', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

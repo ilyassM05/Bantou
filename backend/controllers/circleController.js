@@ -326,6 +326,51 @@ exports.requestAccess = async (req, res) => {
     }
 };
 
+exports.deleteCircle = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const circleId = req.params.id;
+
+        if (req.user.role === 'member') {
+            return res.status(403).json({ error: 'Members cannot delete circles.' });
+        }
+
+        const circle = await Circle.findById(circleId);
+        if (!circle) {
+            return res.status(404).json({ error: 'Circle not found' });
+        }
+
+        const association = await Association.findByUserId(userId);
+        if (!association) {
+            return res.status(403).json({ error: 'Unauthorized to delete this circle' });
+        }
+
+        let isAdmin = circle.created_by === userId || association.creator_id === userId;
+
+        if (!isAdmin) {
+            const accessRequest = await CircleAccessRequest.findByCircleAndUser(circleId, userId);
+            if (accessRequest && accessRequest.status === 'Approved') {
+                isAdmin = true;
+            }
+        }
+
+        if (req.user.role === 'SA') {
+            isAdmin = true;
+        }
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only authorized admins can delete this circle' });
+        }
+
+        await Circle.delete(circleId);
+
+        res.status(200).json({ message: 'Circle deleted successfully' });
+    } catch (error) {
+        console.error('Delete circle error:', error);
+        res.status(500).json({ error: 'Failed to delete circle' });
+    }
+};
+
 exports.getPendingRequests = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -343,23 +388,41 @@ exports.getPendingRequests = async (req, res) => {
 
         const db = require('../config/db');
 
-        // Association Join Requests (Pending Members) — visible to both SA and admin
-        const [memberRequests] = await db.query(
-            `SELECT u.id as user_id, u.name as user_name, u.email as user_email, u.status, u.created_at, 
-                    mi.invited_by, inv.name as inviter_name 
-             FROM users u
-             JOIN association_members am ON u.id = am.user_id
-             JOIN member_invitations mi ON mi.invitee_email = u.email AND mi.association_id = am.association_id
-             LEFT JOIN users inv ON mi.invited_by = inv.id
-             WHERE am.association_id = ? AND u.status = 'en attente'`,
-             [association.id]
-        );
+        // Association Join Requests (Pending Members)
+        // SA sees all pending members; Admin sees only members who requested to join
+        // circles that the admin created.
+        let memberRequests;
+        if (role === 'SA') {
+            [memberRequests] = await db.query(
+                `SELECT u.id as user_id, u.name as user_name, u.email as user_email, u.status, u.created_at,
+                        mi.invited_by, inv.name as inviter_name
+                 FROM users u
+                 JOIN association_members am ON u.id = am.user_id
+                 JOIN member_invitations mi ON mi.invitee_email = u.email AND mi.association_id = am.association_id
+                 LEFT JOIN users inv ON mi.invited_by = inv.id
+                 WHERE am.association_id = ? AND u.status = 'en attente'`,
+                 [association.id]
+            );
+        } else {
+            // Admin: only see member requests for circles they created
+            [memberRequests] = await db.query(
+                `SELECT DISTINCT u.id as user_id, u.name as user_name, u.email as user_email, u.status, u.created_at,
+                        mi.invited_by, inv.name as inviter_name
+                 FROM users u
+                 JOIN association_members am ON u.id = am.user_id
+                 JOIN member_invitations mi ON mi.invitee_email = u.email AND mi.association_id = am.association_id
+                 LEFT JOIN users inv ON mi.invited_by = inv.id
+                 JOIN circles c ON mi.circle_id = c.id
+                 WHERE am.association_id = ? AND u.status = 'en attente' AND c.created_by = ?`,
+                 [association.id, userId]
+            );
+        }
 
         let pendingRequests = [
             ...memberRequests.map(r => ({ ...r, requestType: 'association', id: r.user_id }))
         ];
 
-        // Circle Access Requests — visible to SA only
+        // Circle Access Requests — SA only
         if (role === 'SA') {
             const [circleRequests] = await db.query(
                 `SELECT car.*, c.name as circle_name, u.name as user_name, u.email as user_email
@@ -398,9 +461,9 @@ exports.respondToRequest = async (req, res) => {
             return res.status(403).json({ error: 'Members cannot respond to requests' });
         }
 
-        // Admins can only handle association (member invitation) requests
+        // Admins can only handle association (member invitation) requests for circles they created
         if (role === 'admin' && requestType !== 'association') {
-            return res.status(403).json({ error: 'Admins can only approve or decline member invitations' });
+            return res.status(403).json({ error: 'Admins can only approve or decline member invitations for their own circles' });
         }
 
         const association = await Association.findByUserId(userId);
@@ -409,7 +472,22 @@ exports.respondToRequest = async (req, res) => {
         const db = require('../config/db');
 
         if (requestType === 'association') {
-            // Handle member joining — allowed for both SA and admin
+            // For admins: verify this member's invitation is linked to a circle the admin created
+            if (role === 'admin') {
+                const [adminCheck] = await db.query(
+                    `SELECT mi.id FROM member_invitations mi
+                     JOIN circles c ON mi.circle_id = c.id
+                     WHERE mi.invitee_email = (
+                         SELECT email FROM users WHERE id = ?
+                     ) AND c.created_by = ? AND mi.association_id = ?`,
+                    [requestId, userId, association.id]
+                );
+                if (adminCheck.length === 0) {
+                    return res.status(403).json({ error: 'You can only manage requests for circles you created.' });
+                }
+            }
+
+            // Handle member joining — allowed for both SA and admin (within scope)
             if (status === 'Approved') {
                 await db.query('UPDATE users SET status = ? WHERE id = ?', ['actif', requestId]);
             } else {
@@ -453,17 +531,28 @@ exports.joinCircle = async (req, res) => {
     try {
         const userId = req.user.id;
         const circleId = req.params.id;
+        const role = req.user.role;
 
         const circle = await Circle.findById(circleId);
         if (!circle) return res.status(404).json({ error: 'Circle not found' });
 
-        // Verify user is in the same association
+        const db = require('../config/db');
+
+        // Super Admin can join any circle directly without association membership check
+        if (role === 'SA') {
+            await db.query(
+                'INSERT IGNORE INTO circle_members (circle_id, user_id) VALUES (?, ?)',
+                [circleId, userId]
+            );
+            return res.status(200).json({ message: 'Successfully joined the circle.' });
+        }
+
+        // Other roles: verify user is in the same association
         const association = await Association.findByUserId(userId);
         if (!association || association.id !== circle.association_id) {
             return res.status(403).json({ error: 'You do not belong to this association.' });
         }
 
-        const db = require('../config/db');
         await db.query(
             'INSERT IGNORE INTO circle_members (circle_id, user_id) VALUES (?, ?)',
             [circleId, userId]
@@ -634,16 +723,17 @@ exports.getCircleParticipants = async (req, res) => {
                 u.email, 
                 u.role, 
                 u.profile_picture,
-                IF(cm.circle_id IS NOT NULL, 1, 0) as has_joined,
-                cm.joined_at
+                IF(u.role = 'SA', 1, IF(cm.circle_id IS NOT NULL OR car.status = 'Approved', 1, 0)) as has_joined,
+                COALESCE(cm.joined_at, car.updated_at) as joined_at
             FROM users u
             JOIN association_members am ON u.id = am.user_id
             LEFT JOIN circle_members cm ON u.id = cm.user_id AND cm.circle_id = ?
+            LEFT JOIN circle_access_requests car ON u.id = car.user_id AND car.circle_id = ?
             WHERE am.association_id = ?
             ORDER BY has_joined DESC, u.name ASC
         `;
 
-        const [participants] = await db.query(query, [circleId, association.id]);
+        const [participants] = await db.query(query, [circleId, circleId, association.id]);
 
         // Attach association logo for animation
         const associationLogo = association.logo || null;
@@ -697,9 +787,10 @@ async function checkCirclePhotoAccess(userId, userRole, circleId) {
 exports.uploadCirclePhoto = async (req, res) => {
     try {
         const userId = req.user.id;
+        const userRole = req.user.role;
         const circleId = req.params.id;
 
-        const access = await checkCirclePhotoAccess(userId, req.user.role, circleId);
+        const access = await checkCirclePhotoAccess(userId, userRole, circleId);
         if (access.error) return res.status(access.status).json({ error: access.error });
 
         if (!req.file) {
@@ -708,18 +799,27 @@ exports.uploadCirclePhoto = async (req, res) => {
 
         const photoUrl = '/uploads/' + req.file.filename;
 
+        // SA and admin photos are auto-approved; member photos go into moderation
+        const status = (userRole === 'SA' || userRole === 'admin') ? 'approved' : 'pending';
+
         const db = require('../config/db');
         const [result] = await db.query(
-            'INSERT INTO circle_photos (circle_id, user_id, photo_url) VALUES (?, ?, ?)',
-            [circleId, userId, photoUrl]
+            'INSERT INTO circle_photos (circle_id, user_id, photo_url, status) VALUES (?, ?, ?, ?)',
+            [circleId, userId, photoUrl, status]
         );
 
-        res.status(201).json({ 
-            message: 'Photo uploaded successfully', 
+        const message = status === 'approved'
+            ? 'Photo uploaded successfully'
+            : 'Photo submitted for review';
+
+        res.status(201).json({
+            message,
+            status,
             photo: {
                 id: result.insertId,
-                url: photoUrl
-            } 
+                url: photoUrl,
+                status
+            }
         });
     } catch (error) {
         console.error('Upload photo error:', error);
@@ -730,18 +830,25 @@ exports.uploadCirclePhoto = async (req, res) => {
 exports.getCirclePhotos = async (req, res) => {
     try {
         const userId = req.user.id;
+        const userRole = req.user.role;
         const circleId = req.params.id;
 
-        const access = await checkCirclePhotoAccess(userId, req.user.role, circleId);
+        const access = await checkCirclePhotoAccess(userId, userRole, circleId);
         if (access.error) return res.status(access.status).json({ error: access.error });
-        
+
         const db = require('../config/db');
+
+        // Admins and SA see all photos (pending + approved) for moderation.
+        // Regular members only see approved photos.
+        const isPrivileged = userRole === 'SA' || userRole === 'admin';
+        const statusFilter = isPrivileged ? `AND cp.status IN ('pending', 'approved')` : `AND cp.status = 'approved'`;
+
         const query = `
-            SELECT cp.id, cp.photo_url, cp.created_at, u.name as uploader_name 
+            SELECT cp.id, cp.photo_url, cp.created_at, cp.status, u.name as uploader_name
             FROM circle_photos cp
             JOIN users u ON cp.user_id = u.id
-            WHERE cp.circle_id = ?
-            ORDER BY cp.created_at DESC
+            WHERE cp.circle_id = ? ${statusFilter}
+            ORDER BY cp.status ASC, cp.created_at DESC
         `;
         const [photos] = await db.query(query, [circleId]);
 
@@ -749,5 +856,95 @@ exports.getCirclePhotos = async (req, res) => {
     } catch (error) {
         console.error('Get photos error:', error);
         res.status(500).json({ error: 'Failed to fetch photos' });
+    }
+};
+
+/**
+ * PUT /api/circles/:id/photos/:photoId/approve
+ * Approve a pending photo. Admin and SA only.
+ */
+exports.approveCirclePhoto = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const circleId = req.params.id;
+        const photoId = req.params.photoId;
+
+        if (userRole !== 'SA' && userRole !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can approve photos.' });
+        }
+
+        const access = await checkCirclePhotoAccess(userId, userRole, circleId);
+        if (access.error) return res.status(access.status).json({ error: access.error });
+
+        const db = require('../config/db');
+        const [result] = await db.query(
+            `UPDATE circle_photos SET status = 'approved' WHERE id = ? AND circle_id = ?`,
+            [photoId, circleId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Photo not found.' });
+        }
+
+        res.status(200).json({ message: 'Photo approved successfully.' });
+    } catch (error) {
+        console.error('Approve photo error:', error);
+        res.status(500).json({ error: 'Failed to approve photo' });
+    }
+};
+
+/**
+ * DELETE /api/circles/:id/photos/:photoId
+ * Reject/delete a photo. Admin and SA only.
+ */
+exports.rejectCirclePhoto = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const circleId = req.params.id;
+        const photoId = req.params.photoId;
+
+        if (userRole !== 'SA' && userRole !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can reject photos.' });
+        }
+
+        const access = await checkCirclePhotoAccess(userId, userRole, circleId);
+        if (access.error) return res.status(access.status).json({ error: access.error });
+
+        const db = require('../config/db');
+
+        // Fetch the photo record first so we can delete the file from disk
+        const [rows] = await db.query(
+            'SELECT photo_url FROM circle_photos WHERE id = ? AND circle_id = ?',
+            [photoId, circleId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Photo not found.' });
+        }
+
+        // Delete from DB
+        await db.query(
+            'DELETE FROM circle_photos WHERE id = ? AND circle_id = ?',
+            [photoId, circleId]
+        );
+
+        // Attempt to delete the physical file (non-fatal if missing)
+        try {
+            const path = require('path');
+            const fs = require('fs');
+            const filePath = path.join(__dirname, '..', rows[0].photo_url);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        } catch (fsErr) {
+            console.error('Could not delete photo file:', fsErr);
+        }
+
+        res.status(200).json({ message: 'Photo rejected and removed.' });
+    } catch (error) {
+        console.error('Reject photo error:', error);
+        res.status(500).json({ error: 'Failed to reject photo' });
     }
 };

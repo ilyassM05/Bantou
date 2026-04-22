@@ -257,6 +257,20 @@ class AppLocalizations {
       'cdPendingApproval': 'Pending Approval',
       'cdRequestAccess': 'Request Access',
       'cdMemberOfCircle': 'You are a member of this circle',
+      // Photo Moderation
+      'cdPendingPhotos': 'Pending Photos ({count})',
+      'cdPendingBadge': 'PENDING',
+      'cdUploadedBy': 'Uploaded by',
+      'cdAwaitingApproval': 'Awaiting approval...',
+      'cdApprovePhoto': 'Approve Photo',
+      'cdRejectPhoto': 'Reject Photo',
+      'cdRejectPhotoTitle': 'Reject Photo?',
+      'cdRejectPhotoMessage': 'Are you sure you want to reject and delete this photo?',
+      'cdCancelBtn': 'Cancel',
+      'cdRejectBtn': 'Reject',
+      'cdPhotoApproved': 'Photo approved.',
+      'cdPhotoRejected': 'Photo rejected and deleted.',
+      'cdPhotoSubmittedForReview': 'Photo submitted for review.',
       // Posts
       'posts_feed': 'Posts feed',
       'share_an_update': 'Share an update with your circle...',
@@ -269,6 +283,32 @@ class AppLocalizations {
       'share': 'Share',
       'create_post': 'Create Post',
       'error_fetching_posts': 'Error fetching posts',
+      'add_comment': 'Add a comment…',
+      'no_comments': 'No comments yet. Be the first!',
+      'share_with': 'Share with colleagues',
+      'share_success': 'Post shared successfully',
+      'shared_by': 'Shared by',
+      'select_recipients': 'Select recipients',
+      'search_members': 'Search members…',
+      'send': 'Send',
+      // User Profile
+      'upAbout': 'About',
+      'upNotProvided': 'Not provided',
+      'upProfInfo': 'Professional Info',
+      'upJobTitle': 'Job Title',
+      'upCompany': 'Company',
+      'upCommunityRole': 'Community Role',
+      'upCity': 'City',
+      'upLinks': 'Links',
+      'upWebsite': 'Website',
+      'upContact': 'Contact',
+      'upEmail': 'Email',
+      'upPhone': 'Phone',
+      'upSendMessage': 'Send Message',
+      'upSuperAdmin': 'Super Admin',
+      'upAdmin': 'Admin',
+      'upMember': 'Member',
+      'upRetry': 'Retry',
     },
 
     // ── French ───────────────────────────────────────────────────────────
@@ -504,6 +544,20 @@ class AppLocalizations {
       'cdPendingApproval': 'En attente d\'approbation',
       'cdRequestAccess': 'Demander l\'accès',
       'cdMemberOfCircle': 'Vous êtes membre de ce cercle',
+      // Photo Moderation
+      'cdPendingPhotos': 'Photos en attente ({count})',
+      'cdPendingBadge': 'EN ATTENTE',
+      'cdUploadedBy': 'Téléchargé par',
+      'cdAwaitingApproval': 'En attente d\'approbation...',
+      'cdApprovePhoto': 'Approuver la photo',
+      'cdRejectPhoto': 'Rejeter la photo',
+      'cdRejectPhotoTitle': 'Rejeter la photo ?',
+      'cdRejectPhotoMessage': 'Êtes-vous sûr de vouloir rejeter et supprimer cette photo ?',
+      'cdCancelBtn': 'Annuler',
+      'cdRejectBtn': 'Rejeter',
+      'cdPhotoApproved': 'Photo approuvée.',
+      'cdPhotoRejected': 'Photo rejetée et supprimée.',
+      'cdPhotoSubmittedForReview': 'Photo soumise pour révision.',
       // Posts
       'posts_feed': 'Fil d\'actualité',
       'share_an_update': 'Partagez une mise à jour avec votre cercle...',
@@ -516,6 +570,32 @@ class AppLocalizations {
       'share': 'Partager',
       'create_post': 'Créer un post',
       'error_fetching_posts': 'Erreur lors de la récupération des posts',
+      'add_comment': 'Ajouter un commentaire…',
+      'no_comments': 'Aucun commentaire pour l\'instant. Soyez le premier !',
+      'share_with': 'Partager avec des collègues',
+      'share_success': 'Publication partagée avec succès',
+      'shared_by': 'Partagé par',
+      'select_recipients': 'Sélectionner des destinataires',
+      'search_members': 'Rechercher des membres…',
+      'send': 'Envoyer',
+      // User Profile
+      'upAbout': 'À propos',
+      'upNotProvided': 'Non renseigné',
+      'upProfInfo': 'Infos Professionnelles',
+      'upJobTitle': 'Poste',
+      'upCompany': 'Entreprise',
+      'upCommunityRole': 'Rôle dans la communauté',
+      'upCity': 'Ville',
+      'upLinks': 'Liens',
+      'upWebsite': 'Site web',
+      'upContact': 'Contact',
+      'upEmail': 'E-mail',
+      'upPhone': 'Téléphone',
+      'upSendMessage': 'Envoyer un message',
+      'upSuperAdmin': 'Super Admin',
+      'upAdmin': 'Admin',
+      'upMember': 'Membre',
+      'upRetry': 'Réessayer',
     },
 
     // ── Spanish ──────────────────────────────────────────────────────────
@@ -750,6 +830,20 @@ class AppLocalizations {
       'cdPendingApproval': 'Aprobación pendiente',
       'cdRequestAccess': 'Solicitar acceso',
       'cdMemberOfCircle': 'Eres miembro de este círculo',
+      // Photo Moderation
+      'cdPendingPhotos': 'Fotos pendientes ({count})',
+      'cdPendingBadge': 'PENDIENTE',
+      'cdUploadedBy': 'Subido por',
+      'cdAwaitingApproval': 'En espera de aprobación...',
+      'cdApprovePhoto': 'Aprobar foto',
+      'cdRejectPhoto': 'Rechazar foto',
+      'cdRejectPhotoTitle': '¿Rechazar foto?',
+      'cdRejectPhotoMessage': '¿Estás seguro de que deseas rechazar y eliminar esta foto?',
+      'cdCancelBtn': 'Cancelar',
+      'cdRejectBtn': 'Rechazar',
+      'cdPhotoApproved': 'Foto aprobada.',
+      'cdPhotoRejected': 'Foto rechazada y eliminada.',
+      'cdPhotoSubmittedForReview': 'Foto enviada para revisión.',
       // Posts
       'posts_feed': 'Feed de publicaciones',
       'share_an_update': 'Comparte una actualización con tu círculo...',
@@ -762,6 +856,32 @@ class AppLocalizations {
       'share': 'Compartir',
       'create_post': 'Crear publicación',
       'error_fetching_posts': 'Error al obtener publicaciones',
+      'add_comment': 'Añadir un comentario…',
+      'no_comments': 'Aún no hay comentarios. ¡Sé el primero!',
+      'share_with': 'Compartir con compañeros',
+      'share_success': 'Publicación compartida con éxito',
+      'shared_by': 'Compartido por',
+      'select_recipients': 'Seleccionar destinatarios',
+      'search_members': 'Buscar miembros…',
+      'send': 'Enviar',
+      // User Profile
+      'upAbout': 'Acerca de',
+      'upNotProvided': 'No proporcionado',
+      'upProfInfo': 'Información Profesional',
+      'upJobTitle': 'Puesto',
+      'upCompany': 'Empresa',
+      'upCommunityRole': 'Rol en la comunidad',
+      'upCity': 'Ciudad',
+      'upLinks': 'Enlaces',
+      'upWebsite': 'Sitio web',
+      'upContact': 'Contacto',
+      'upEmail': 'Correo electrónico',
+      'upPhone': 'Teléfono',
+      'upSendMessage': 'Enviar mensaje',
+      'upSuperAdmin': 'Super Admin',
+      'upAdmin': 'Administrador',
+      'upMember': 'Miembro',
+      'upRetry': 'Reintentar',
     },
 
     // ── Arabic ───────────────────────────────────────────────────────────
@@ -996,6 +1116,20 @@ class AppLocalizations {
       'cdPendingApproval': 'في انتظار الموافقة',
       'cdRequestAccess': 'طلب انضمام',
       'cdMemberOfCircle': 'أنت عضو في هذه الدائرة',
+      // Photo Moderation
+      'cdPendingPhotos': 'صور قيد الانتظار ({count})',
+      'cdPendingBadge': 'قيد الانتظار',
+      'cdUploadedBy': 'تم الرفع بواسطة',
+      'cdAwaitingApproval': 'بانتظار الموافقة...',
+      'cdApprovePhoto': 'الموافقة على الصورة',
+      'cdRejectPhoto': 'رفض الصورة',
+      'cdRejectPhotoTitle': 'رفض الصورة؟',
+      'cdRejectPhotoMessage': 'هل أنت متأكد أنك تريد رفض وحذف هذه الصورة؟',
+      'cdCancelBtn': 'إلغاء',
+      'cdRejectBtn': 'رفض',
+      'cdPhotoApproved': 'تمت الموافقة على الصورة.',
+      'cdPhotoRejected': 'تم رفض الصورة وحذفها.',
+      'cdPhotoSubmittedForReview': 'تم إرسال الصورة للمراجعة.',
       // Posts
       'posts_feed': 'آخر المنشورات',
       'share_an_update': 'شارك تحديثاً مع دائرتك...',
@@ -1008,6 +1142,32 @@ class AppLocalizations {
       'share': 'مشاركة',
       'create_post': 'إنشاء منشور',
       'error_fetching_posts': 'خطأ في جلب المنشورات',
+      'add_comment': 'أضف تعليقاً…',
+      'no_comments': 'لا توجد تعليقات بعد. كن أول من يعلق!',
+      'share_with': 'مشاركة مع الزملاء',
+      'share_success': 'تمت مشاركة المنشور بنجاح',
+      'shared_by': 'شاركه',
+      'select_recipients': 'اختر المستلمين',
+      'search_members': 'البحث عن الأعضاء…',
+      'send': 'إرسال',
+      // User Profile
+      'upAbout': 'نبذة',
+      'upNotProvided': 'غير متوفر',
+      'upProfInfo': 'المعلومات المهنية',
+      'upJobTitle': 'المسمى الوظيفي',
+      'upCompany': 'الشركة',
+      'upCommunityRole': 'الدور في المجتمع',
+      'upCity': 'المدينة',
+      'upLinks': 'روابط',
+      'upWebsite': 'الموقع الإلكتروني',
+      'upContact': 'تواصل',
+      'upEmail': 'البريد الإلكتروني',
+      'upPhone': 'الهاتف',
+      'upSendMessage': 'إرسال رسالة',
+      'upSuperAdmin': 'مسؤول عام',
+      'upAdmin': 'مسؤول',
+      'upMember': 'عضو',
+      'upRetry': 'إعادة المحاولة',
     },
   };
 
@@ -1273,6 +1433,22 @@ class AppLocalizations {
   String get cdRequestAccess => _t('cdRequestAccess');
   String get cdMemberOfCircle => _t('cdMemberOfCircle');
 
+  // Photo Moderation
+  String cdPendingPhotos(int count) =>
+      _t('cdPendingPhotos').replaceAll('{count}', count.toString());
+  String get cdPendingBadge => _t('cdPendingBadge');
+  String get cdUploadedBy => _t('cdUploadedBy');
+  String get cdAwaitingApproval => _t('cdAwaitingApproval');
+  String get cdApprovePhoto => _t('cdApprovePhoto');
+  String get cdRejectPhoto => _t('cdRejectPhoto');
+  String get cdRejectPhotoTitle => _t('cdRejectPhotoTitle');
+  String get cdRejectPhotoMessage => _t('cdRejectPhotoMessage');
+  String get cdCancelBtn => _t('cdCancelBtn');
+  String get cdRejectBtn => _t('cdRejectBtn');
+  String get cdPhotoApproved => _t('cdPhotoApproved');
+  String get cdPhotoRejected => _t('cdPhotoRejected');
+  String get cdPhotoSubmittedForReview => _t('cdPhotoSubmittedForReview');
+
   // Posts
   String get postsFeed => _t('posts_feed');
   String get shareAnUpdate => _t('share_an_update');
@@ -1285,6 +1461,35 @@ class AppLocalizations {
   String get share => _t('share');
   String get createPost => _t('create_post');
   String get errorFetchingPosts => _t('error_fetching_posts');
+
+  // Comments & Sharing
+  String get addComment => _t('add_comment');
+  String get noComments => _t('no_comments');
+  String get shareWith => _t('share_with');
+  String get shareSuccess => _t('share_success');
+  String get sharedBy => _t('shared_by');
+  String get selectRecipients => _t('select_recipients');
+  String get searchMembers => _t('search_members');
+  String get send => _t('send');
+
+  // User Profile
+  String get upAbout => _t('upAbout');
+  String get upNotProvided => _t('upNotProvided');
+  String get upProfInfo => _t('upProfInfo');
+  String get upJobTitle => _t('upJobTitle');
+  String get upCompany => _t('upCompany');
+  String get upCommunityRole => _t('upCommunityRole');
+  String get upCity => _t('upCity');
+  String get upLinks => _t('upLinks');
+  String get upWebsite => _t('upWebsite');
+  String get upContact => _t('upContact');
+  String get upEmail => _t('upEmail');
+  String get upPhone => _t('upPhone');
+  String get upSendMessage => _t('upSendMessage');
+  String get upSuperAdmin => _t('upSuperAdmin');
+  String get upAdmin => _t('upAdmin');
+  String get upMember => _t('upMember');
+  String get upRetry => _t('upRetry');
 
   // Dynamic enum translation
   String translateStatus(String status) {

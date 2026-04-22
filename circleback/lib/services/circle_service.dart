@@ -188,6 +188,27 @@ class CircleService {
     }
   }
 
+  Future<void> deleteCircle(int circleId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$circleId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? 'Failed to delete circle');
+      }
+    } catch (e) {
+      throw Exception('Delete circle failed: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> requestCircleAccess(int circleId) async {
     try {
       final token = await _getToken();
@@ -340,4 +361,45 @@ class CircleService {
       throw Exception('Search members failed: $e');
     }
   }
+
+  /// Approves a pending circle photo. Admin/SA only.
+  Future<void> approveCirclePhoto(int circleId, int photoId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/$circleId/photos/$photoId/approve'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? 'Failed to approve photo');
+      }
+    } catch (e) {
+      throw Exception('Approve photo failed: $e');
+    }
+  }
+
+  /// Rejects (deletes) a circle photo. Admin/SA only.
+  Future<void> rejectCirclePhoto(int circleId, int photoId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$circleId/photos/$photoId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? 'Failed to reject photo');
+      }
+    } catch (e) {
+      throw Exception('Reject photo failed: $e');
+    }
+  }
 }
+

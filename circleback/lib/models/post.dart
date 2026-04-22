@@ -11,6 +11,7 @@ class Post {
   final String userName;
   final String userRole;
   final int userAvatar;
+  final String? sharedByName; // non-null → post was shared to the current user
 
   Post({
     required this.id,
@@ -25,6 +26,7 @@ class Post {
     required this.userName,
     required this.userRole,
     required this.userAvatar,
+    this.sharedByName,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -44,10 +46,16 @@ class Post {
       userName: json['user_name'] ?? 'Unknown User',
       userRole: json['user_role'] ?? 'Member',
       userAvatar: json['user_avatar'] ?? 0,
+      sharedByName: json['shared_by_name'] as String?,
     );
   }
 
-  Post copyWith({int? likesCount, bool? isLikedByUser}) {
+  Post copyWith({
+    int? likesCount,
+    bool? isLikedByUser,
+    int? commentsCount,
+    String? sharedByName,
+  }) {
     return Post(
       id: id,
       userId: userId,
@@ -55,12 +63,13 @@ class Post {
       content: content,
       imageUrl: imageUrl,
       likesCount: likesCount ?? this.likesCount,
-      commentsCount: commentsCount,
+      commentsCount: commentsCount ?? this.commentsCount,
       isLikedByUser: isLikedByUser ?? this.isLikedByUser,
       createdAt: createdAt,
       userName: userName,
       userRole: userRole,
       userAvatar: userAvatar,
+      sharedByName: sharedByName ?? this.sharedByName,
     );
   }
 }

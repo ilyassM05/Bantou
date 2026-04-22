@@ -428,20 +428,11 @@ exports.updateProfile = async (req, res, next) => {
         await User.updateProfile(userId, profileData);
         await User.markProfileSetupSeen(userId);
 
-        // Fetch the user to check their current role before upgrading
-        const user = await User.findById(userId);
-        // Capture the role value NOW (before any DB change) so the response is accurate
-        const wasAdmin = !!(user && user.role === 'admin');
-
-        // If the user was a restricted invited admin, upgrade them to full SA
-        if (wasAdmin) {
-            const db = require('../config/db');
-            await db.query('UPDATE users SET role = ? WHERE id = ?', ['SA', userId]);
-        }
-
+        // NOTE: Admin users NEVER get upgraded to SA.
+        // Role assignments are permanent and set at invitation time.
         res.status(200).json({
             message: 'Profile updated successfully.',
-            upgraded: wasAdmin,
+            upgraded: false,
         });
     } catch (err) {
         next(err);
@@ -559,6 +550,11 @@ const safeParse = (val) => {
  */
 exports.createAssociation = async (req, res, next) => {
     try {
+        // Only Super Admins can create or modify association information.
+        if (req.user.role !== 'SA') {
+            return res.status(403).json({ error: 'Only Super Admins can modify association information.' });
+        }
+
         const userId = req.user.id;
         const {
             name,

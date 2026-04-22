@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'biometric_service.dart';
 import '../models/post.dart';
+import '../models/post_comment.dart';
+import '../models/association_member.dart';
 import '../models/user_profile.dart';
 
 class PostService {
@@ -10,6 +12,8 @@ class PostService {
   Future<String?> _getToken() async {
     return await BiometricService.getToken();
   }
+
+  // ── Posts ────────────────────────────────────────────────────────────────
 
   Future<List<Post>> getPosts() async {
     try {
@@ -124,6 +128,109 @@ class PostService {
       }
     } catch (e) {
       throw Exception('Get profile failed: $e');
+    }
+  }
+
+  // ── Comments ─────────────────────────────────────────────────────────────
+
+  /// Fetches all comments for [postId] in chronological order.
+  Future<List<PostComment>> getComments(int postId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/$postId/comments'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> list = data['comments'];
+        return list.map((c) => PostComment.fromJson(c)).toList();
+      } else {
+        throw Exception(data['error'] ?? 'Failed to fetch comments');
+      }
+    } catch (e) {
+      throw Exception('Get comments failed: $e');
+    }
+  }
+
+  /// Adds a comment to [postId] and returns the newly created comment.
+  Future<PostComment> addComment(int postId, String content) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$postId/comments'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'content': content}),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return PostComment.fromJson(data['comment']);
+      } else {
+        throw Exception(data['error'] ?? 'Failed to add comment');
+      }
+    } catch (e) {
+      throw Exception('Add comment failed: $e');
+    }
+  }
+
+  // ── Sharing ──────────────────────────────────────────────────────────────
+
+  /// Returns all association members (excluding self) for the share picker.
+  Future<List<AssociationMember>> getAssociationMembers() async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/members'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> list = data['members'];
+        return list.map((m) => AssociationMember.fromJson(m)).toList();
+      } else {
+        throw Exception(data['error'] ?? 'Failed to fetch members');
+      }
+    } catch (e) {
+      throw Exception('Get members failed: $e');
+    }
+  }
+
+  /// Shares [postId] with all [recipientIds] (any number of association members).
+  Future<void> sharePost(int postId, List<int> recipientIds) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$postId/share'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'recipientIds': recipientIds}),
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? 'Failed to share post');
+      }
+    } catch (e) {
+      throw Exception('Share post failed: $e');
     }
   }
 }

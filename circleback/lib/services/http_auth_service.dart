@@ -548,11 +548,8 @@ class HttpAuthService implements AuthService {
           .timeout(_kTimeout);
 
       if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['upgraded'] == true) {
-          currentUserRole = 'SA';
-          currentIsInvitedAdmin = false; // no longer an invited-admin once upgraded
-        }
+        // Role is fixed at signup and never mutated client-side.
+        // The backend no longer promotes admins to SA on profile save.
         currentUserNeedsSetup = false;
         return true;
       } else {

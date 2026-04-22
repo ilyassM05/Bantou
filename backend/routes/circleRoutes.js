@@ -11,6 +11,7 @@ router.get('/requests/pending', protect, circleController.getPendingRequests);
 router.put('/requests/:requestId/respond', protect, circleController.respondToRequest);
 router.post('/:id/request-access', protect, circleController.requestAccess);
 router.put('/:id', protect, circleController.updateCircle);
+router.delete('/:id', protect, circleController.deleteCircle);
 router.get('/:id/participants', protect, circleController.getCircleParticipants);
 
 // Member circle actions
@@ -21,6 +22,8 @@ router.post('/:id/invite', protect, circleController.inviteToCircle);
 // Photos
 router.post('/:id/photos', protect, upload.single('photo'), circleController.uploadCirclePhoto);
 router.get('/:id/photos', protect, circleController.getCirclePhotos);
+router.put('/:id/photos/:photoId/approve', protect, circleController.approveCirclePhoto);
+router.delete('/:id/photos/:photoId', protect, circleController.rejectCirclePhoto);
 
 module.exports = router;
 

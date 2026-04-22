@@ -2,6 +2,12 @@
     <!-- Biometric / fingerprint permissions -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+    <!-- Camera: required for "Take Photo" -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Gallery access on Android 13+ (API 33) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- Gallery access on Android 12 and below -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <application
         android:label="Bantou"
         android:name="${applicationName}"

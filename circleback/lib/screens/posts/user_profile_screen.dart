@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../models/user_profile.dart';
 import '../../services/post_service.dart';
 import '../../widgets/user_avatar.dart';
+import '../../l10n/app_localizations.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -59,27 +60,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
-  String _getRoleBadge(String role) {
+  String _getRoleBadge(String role, AppLocalizations l10n) {
     switch (role) {
-      case 'SA': return 'Super Admin';
-      case 'admin': return 'Admin';
-      default: return 'Member';
+      case 'SA': return l10n.upSuperAdmin;
+      case 'admin': return l10n.upAdmin;
+      default: return l10n.upMember;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.gradientStart,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError()
-              : _buildProfile(),
+              ? _buildError(l10n)
+              : _buildProfile(l10n),
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -88,13 +90,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const SizedBox(height: 12),
           Text(_error!, style: const TextStyle(color: Colors.red)),
           const SizedBox(height: 16),
-          TextButton(onPressed: _loadProfile, child: const Text('Retry')),
+          TextButton(onPressed: _loadProfile, child: Text(l10n.upRetry)),
         ],
       ),
     );
   }
 
-  Widget _buildProfile() {
+  Widget _buildProfile(AppLocalizations l10n) {
     final p = _profile!;
     return CustomScrollView(
       slivers: [
@@ -162,7 +164,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      _getRoleBadge(p.role),
+                      _getRoleBadge(p.role, l10n),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -186,9 +188,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // About / Bio
                 _buildSection(
                   icon: Icons.person_outline,
-                  title: 'About',
+                  title: l10n.upAbout,
                   child: Text(
-                    (p.bio != null && p.bio!.isNotEmpty) ? p.bio! : 'Not provided',
+                    (p.bio != null && p.bio!.isNotEmpty) ? p.bio! : l10n.upNotProvided,
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       height: 1.6,
@@ -202,13 +204,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // Professional Info
                 _buildSection(
                   icon: Icons.work_outline,
-                  title: 'Professional Info',
+                  title: l10n.upProfInfo,
                   child: Column(
                     children: [
-                      _buildInfoRow(Icons.badge_outlined, (p.jobTitle != null && p.jobTitle!.isNotEmpty) ? p.jobTitle! : 'Job Title: Not provided'),
-                      _buildInfoRow(Icons.business_outlined, (p.company != null && p.company!.isNotEmpty) ? p.company! : 'Company: Not provided'),
-                      _buildInfoRow(Icons.group_outlined, (p.communityRole != null && p.communityRole!.isNotEmpty) ? p.communityRole! : 'Community Role: Not provided'),
-                      _buildInfoRow(Icons.location_on_outlined, (p.city != null && p.city!.isNotEmpty) ? p.city! : 'City: Not provided'),
+                      _buildInfoRow(Icons.badge_outlined, (p.jobTitle != null && p.jobTitle!.isNotEmpty) ? p.jobTitle! : '${l10n.upJobTitle}: ${l10n.upNotProvided}'),
+                      _buildInfoRow(Icons.business_outlined, (p.company != null && p.company!.isNotEmpty) ? p.company! : '${l10n.upCompany}: ${l10n.upNotProvided}'),
+                      _buildInfoRow(Icons.group_outlined, (p.communityRole != null && p.communityRole!.isNotEmpty) ? p.communityRole! : '${l10n.upCommunityRole}: ${l10n.upNotProvided}'),
+                      _buildInfoRow(Icons.location_on_outlined, (p.city != null && p.city!.isNotEmpty) ? p.city! : '${l10n.upCity}: ${l10n.upNotProvided}'),
                     ],
                   ),
                 ),
@@ -217,7 +219,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // Website
                 _buildSection(
                   icon: Icons.link,
-                  title: 'Links',
+                  title: l10n.upLinks,
                   child: (p.website != null && p.website!.isNotEmpty)
                       ? InkWell(
                           onTap: () => _launchUrl(p.website!),
@@ -231,7 +233,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                         )
                       : Text(
-                          'Website: Not provided',
+                          '${l10n.upWebsite}: ${l10n.upNotProvided}',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.textSecondary.withValues(alpha: 0.7),
@@ -244,7 +246,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // Contact info
                 _buildSection(
                   icon: Icons.contact_mail_outlined,
-                  title: 'Contact',
+                  title: l10n.upContact,
                   child: Column(
                     children: [
                       (p.email != null && p.email!.isNotEmpty)
@@ -253,14 +255,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               label: p.email!,
                               onTap: () => _launchEmail(p.email!),
                             )
-                          : _buildInfoRow(Icons.email_outlined, 'Email: Not provided'),
+                          : _buildInfoRow(Icons.email_outlined, '${l10n.upEmail}: ${l10n.upNotProvided}'),
                       (p.phone != null && p.phone!.isNotEmpty)
                           ? _buildContactRow(
                               icon: Icons.phone_outlined,
                               label: p.phone!,
                               onTap: () => _launchPhone(p.phone!),
                             )
-                          : _buildInfoRow(Icons.phone_outlined, 'Phone: Not provided'),
+                          : _buildInfoRow(Icons.phone_outlined, '${l10n.upPhone}: ${l10n.upNotProvided}'),
                     ],
                   ),
                 ),
@@ -279,7 +281,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                     icon: const Icon(Icons.send_outlined),
                     label: Text(
-                      'Send Message',
+                      l10n.upSendMessage,
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,

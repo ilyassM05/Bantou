@@ -98,7 +98,6 @@ exports.getUserProfile = async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // No privacy restrictions — return all information to any authenticated user
         res.status(200).json({
             id: user.id,
             name: user.name,
@@ -120,3 +119,123 @@ exports.getUserProfile = async (req, res) => {
     }
 };
 
+// ── Comments ──────────────────────────────────────────────────────────────────
+
+exports.getComments = async (req, res) => {
+    try {
+        const postId = parseInt(req.params.id);
+
+        const post = await Post.findById(postId);
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        // Access check: requester must belong to the same association as the post
+        const association = await Association.findByUserId(req.user.id);
+        if (!association || association.id !== post.association_id) {
+            return res.status(403).json({ error: 'Access denied.' });
+        }
+
+        const comments = await Post.getComments(postId);
+        res.status(200).json({ comments });
+    } catch (error) {
+        console.error('Get comments error:', error);
+        res.status(500).json({ error: 'Failed to fetch comments' });
+    }
+};
+
+exports.addComment = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const postId = parseInt(req.params.id);
+        const { content } = req.body;
+
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: 'Comment content cannot be empty.' });
+        }
+
+        const post = await Post.findById(postId);
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        const comment = await Post.addComment(postId, userId, content.trim());
+        res.status(201).json({ comment });
+    } catch (error) {
+        console.error('Add comment error:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
+    }
+};
+
+// ── Sharing ───────────────────────────────────────────────────────────────────
+
+/**
+ * POST /:id/share
+ * Body: { recipientIds: [int, int, ...] }   — any number of association members
+ */
+exports.sharePost = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const postId = parseInt(req.params.id);
+        const { recipientIds } = req.body;
+
+        if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+            return res.status(400).json({ error: 'Please select at least one recipient.' });
+        }
+
+        const post = await Post.findById(postId);
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        const association = await Association.findByUserId(userId);
+        if (!association || association.id !== post.association_id) {
+            return res.status(403).json({ error: 'Access denied.' });
+        }
+
+        // Filter out self-shares silently
+        const filteredIds = recipientIds.filter(id => id !== userId);
+        if (filteredIds.length === 0) {
+            return res.status(400).json({ error: 'You cannot share a post only with yourself.' });
+        }
+
+        await Post.sharePost(postId, userId, filteredIds, association.id);
+        res.status(200).json({ message: 'Post shared successfully.' });
+    } catch (error) {
+        console.error('Share post error:', error);
+        res.status(500).json({ error: error.message || 'Failed to share post' });
+    }
+};
+
+/**
+ * GET /members
+ * Returns all members of the current user's association (excluding self).
+ */
+exports.getAssociationMembers = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const association = await Association.findByUserId(userId);
+        if (!association) {
+            return res.status(200).json({ members: [] });
+        }
+
+        // Members = the association creator + everyone in association_members
+        // (users table has no direct association_id column)
+        const [rows] = await db.execute(`
+            SELECT DISTINCT u.id, u.name, u.avatar_index
+            FROM users u
+            WHERE u.id != ?
+              AND (
+                u.id = (SELECT creator_id FROM associations WHERE id = ?)
+                OR u.id IN (SELECT user_id FROM association_members WHERE association_id = ?)
+              )
+            ORDER BY u.name ASC
+        `, [userId, association.id, association.id]);
+
+        res.status(200).json({ members: rows });
+    } catch (error) {
+        console.error('Get association members error:', error);
+        res.status(500).json({ error: 'Failed to fetch members' });
+    }
+};

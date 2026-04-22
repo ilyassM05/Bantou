@@ -56,7 +56,7 @@ class _UserAvatarState extends State<UserAvatar> {
       widget.associationLogoUrl != null && widget.associationLogoUrl!.isNotEmpty;
 
   bool get _shouldAnimate =>
-      widget.animate && _hasProfilePic && _hasLogo;
+      widget.animate && _hasLogo;
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _UserAvatarState extends State<UserAvatar> {
 
   void _startTimerIfNeeded() {
     if (!_shouldAnimate) return;
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (mounted) setState(() => _showingProfile = !_showingProfile);
     });
   }

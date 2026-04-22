@@ -184,7 +184,59 @@ bootstrap.connect((err) => {
                                                     bootstrap.query(createPosts, (err) => {
                                                         if (err) console.error('Error creating posts table:', err);
                                                         else console.log('✔  Table `posts` ready.');
-                                                        bootstrap.end();
+
+                                                        // ── post_likes ──────────────────────────
+                                                        const createPostLikes = `
+                                                            CREATE TABLE IF NOT EXISTS post_likes (
+                                                                post_id    INT NOT NULL,
+                                                                user_id    INT NOT NULL,
+                                                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                PRIMARY KEY (post_id, user_id),
+                                                                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                                                                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                                            )
+                                                        `;
+                                                        bootstrap.query(createPostLikes, (err) => {
+                                                            if (err) console.error('Error creating post_likes table:', err);
+                                                            else console.log('✔  Table `post_likes` ready.');
+
+                                                            // ── post_comments ────────────────────
+                                                            const createPostComments = `
+                                                                CREATE TABLE IF NOT EXISTS post_comments (
+                                                                    id         INT AUTO_INCREMENT PRIMARY KEY,
+                                                                    post_id    INT NOT NULL,
+                                                                    user_id    INT NOT NULL,
+                                                                    content    TEXT NOT NULL,
+                                                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                                                                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                                                )
+                                                            `;
+                                                            bootstrap.query(createPostComments, (err) => {
+                                                                if (err) console.error('Error creating post_comments table:', err);
+                                                                else console.log('✔  Table `post_comments` ready.');
+
+                                                                // ── post_shares ──────────────────
+                                                                const createPostShares = `
+                                                                    CREATE TABLE IF NOT EXISTS post_shares (
+                                                                        id         INT AUTO_INCREMENT PRIMARY KEY,
+                                                                        post_id    INT NOT NULL,
+                                                                        shared_by  INT NOT NULL,
+                                                                        shared_to  INT NOT NULL,
+                                                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                        FOREIGN KEY (post_id)   REFERENCES posts(id) ON DELETE CASCADE,
+                                                                        FOREIGN KEY (shared_by) REFERENCES users(id) ON DELETE CASCADE,
+                                                                        FOREIGN KEY (shared_to) REFERENCES users(id) ON DELETE CASCADE,
+                                                                        UNIQUE KEY unique_share (post_id, shared_by, shared_to)
+                                                                    )
+                                                                `;
+                                                                bootstrap.query(createPostShares, (err) => {
+                                                                    if (err) console.error('Error creating post_shares table:', err);
+                                                                    else console.log('✔  Table `post_shares` ready.');
+                                                                    bootstrap.end();
+                                                                });
+                                                            });
+                                                        });
                                                     });
                                                 });
                                             });
