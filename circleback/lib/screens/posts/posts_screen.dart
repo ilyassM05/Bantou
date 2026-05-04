@@ -579,6 +579,7 @@ class _PostsScreenState extends State<PostsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'posts_fab',
         onPressed: _navigateToCreatePost,
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),

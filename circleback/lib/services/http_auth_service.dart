@@ -44,6 +44,9 @@ class HttpAuthService implements AuthService {
   /// Updated after upload/delete and on getProfile().
   static String? currentUserProfilePicture;
 
+  /// ID of the currently signed-in user. Set from the backend response on every auth call.
+  static int? currentUserId;
+
   /// Cached association logo URL for the currently signed-in user's association.
   /// Updated after upload/delete and on getAssociation().
   static String? currentAssociationLogoUrl;
@@ -105,6 +108,7 @@ class HttpAuthService implements AuthService {
         final userEmail = user?['email'] ?? email;
         final token = body['token'] ?? '';
         currentUser = {'name': userName, 'email': userEmail};
+        currentUserId = (user?['id'] as num?)?.toInt();
         currentUserNeedsSetup = !(body['profileSetupSeen'] as bool? ?? false);
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
@@ -162,6 +166,7 @@ class HttpAuthService implements AuthService {
         final body = jsonDecode(response.body);
         final token = body['token'] ?? '';
         currentUser = {'name': name, 'email': email};
+        currentUserId = (body['user']?['id'] as num?)?.toInt();
         currentUserNeedsSetup = true; // new user always needs profile setup
         // onboardingSeen=true means they were an invited admin or member (already linked)
         // so they do NOT need onboarding. Regular new users get false → needs onboarding.
@@ -317,6 +322,7 @@ class HttpAuthService implements AuthService {
         final email = user?['email'] ?? '';
         final token = body['token'] ?? '';
         currentUser = {'name': name, 'email': email};
+        currentUserId = (user?['id'] as num?)?.toInt();
         currentUserNeedsSetup = !(body['profileSetupSeen'] as bool? ?? false);
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
@@ -366,6 +372,7 @@ class HttpAuthService implements AuthService {
         final email = user?['email'] ?? '';
         final token = body['token'] ?? '';
         currentUser = {'name': name, 'email': email};
+        currentUserId = (user?['id'] as num?)?.toInt();
         currentUserNeedsSetup = !(body['profileSetupSeen'] as bool? ?? false);
         currentUserNeedsOnboarding =
             !(body['onboardingSeen'] as bool? ?? false);
@@ -401,6 +408,7 @@ class HttpAuthService implements AuthService {
   @override
   Future<void> signOut() async {
     currentUser = null;
+    currentUserId = null;
     currentUserNeedsSetup = false;
     currentUserNeedsOnboarding = false;
     currentUserRole = null;

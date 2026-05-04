@@ -233,7 +233,93 @@ bootstrap.connect((err) => {
                                                                 bootstrap.query(createPostShares, (err) => {
                                                                     if (err) console.error('Error creating post_shares table:', err);
                                                                     else console.log('✔  Table `post_shares` ready.');
-                                                                    bootstrap.end();
+
+                                                                    // ── chat_invitations ─────────────────────
+                                                                    const createChatInvitations = `
+                                                                        CREATE TABLE IF NOT EXISTS chat_invitations (
+                                                                            id          INT AUTO_INCREMENT PRIMARY KEY,
+                                                                            sender_id   INT NOT NULL,
+                                                                            receiver_id INT NOT NULL,
+                                                                            status      ENUM('pending','accepted','declined') DEFAULT 'pending',
+                                                                            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                            updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                                                            UNIQUE KEY unique_inv (sender_id, receiver_id),
+                                                                            FOREIGN KEY (sender_id)   REFERENCES users(id) ON DELETE CASCADE,
+                                                                            FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+                                                                        )
+                                                                    `;
+                                                                    bootstrap.query(createChatInvitations, (err) => {
+                                                                        if (err) console.error('Error creating chat_invitations table:', err);
+                                                                        else console.log('✔  Table `chat_invitations` ready.');
+
+                                                                        const createConversations = `
+                                                                            CREATE TABLE IF NOT EXISTS conversations (
+                                                                                id         INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                type       ENUM('private','group') DEFAULT 'private',
+                                                                                name       VARCHAR(255) DEFAULT NULL,
+                                                                                image_url  VARCHAR(500) DEFAULT NULL,
+                                                                                created_by INT NOT NULL,
+                                                                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+                                                                            )
+                                                                        `;
+                                                                        bootstrap.query(createConversations, (err) => {
+                                                                            if (err) console.error('Error creating conversations table:', err);
+                                                                            else console.log('✔  Table `conversations` ready.');
+
+                                                                            const createConvMembers = `
+                                                                                CREATE TABLE IF NOT EXISTS conversation_members (
+                                                                                    id              INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                    conversation_id INT NOT NULL,
+                                                                                    user_id         INT NOT NULL,
+                                                                                    role            ENUM('admin','member') DEFAULT 'member',
+                                                                                    joined_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                    UNIQUE KEY uq_conv_user (conversation_id, user_id),
+                                                                                    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+                                                                                    FOREIGN KEY (user_id)         REFERENCES users(id) ON DELETE CASCADE
+                                                                                )
+                                                                            `;
+                                                                            bootstrap.query(createConvMembers, (err) => {
+                                                                                if (err) console.error('Error creating conversation_members table:', err);
+                                                                                else console.log('✔  Table `conversation_members` ready.');
+
+                                                                                const createMessages = `
+                                                                                    CREATE TABLE IF NOT EXISTS messages (
+                                                                                        id              INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                        conversation_id INT NOT NULL,
+                                                                                        sender_id       INT NOT NULL,
+                                                                                        content         TEXT,
+                                                                                        type            ENUM('text','image') DEFAULT 'text',
+                                                                                        image_url       VARCHAR(500) DEFAULT NULL,
+                                                                                        status          ENUM('sent','delivered','seen') DEFAULT 'sent',
+                                                                                        created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+                                                                                        FOREIGN KEY (sender_id)       REFERENCES users(id) ON DELETE CASCADE
+                                                                                    )
+                                                                                `;
+                                                                                bootstrap.query(createMessages, (err) => {
+                                                                                    if (err) console.error('Error creating messages table:', err);
+                                                                                    else console.log('✔  Table `messages` ready.');
+
+                                                                                    const createUserBlocks = `
+                                                                                        CREATE TABLE IF NOT EXISTS user_blocks (
+                                                                                            blocker_id INT NOT NULL,
+                                                                                            blocked_id INT NOT NULL,
+                                                                                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                            PRIMARY KEY (blocker_id, blocked_id),
+                                                                                            FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+                                                                                            FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE
+                                                                                        )
+                                                                                    `;
+                                                                                    bootstrap.query(createUserBlocks, (err) => {
+                                                                                        if (err) console.error('Error creating user_blocks table:', err);
+                                                                                        else console.log('✔  Table `user_blocks` ready.');
+                                                                                        bootstrap.end();
+                                                                                    });
+                                                                                });
+                                                                            });
+                                                                        });
+                                                                    });
                                                                 });
                                                             });
                                                         });

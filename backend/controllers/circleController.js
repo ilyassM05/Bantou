@@ -700,9 +700,8 @@ exports.getCircleParticipants = async (req, res) => {
         const userId = req.user.id;
         const circleId = req.params.id;
 
-        if (req.user.role === 'member') {
-            return res.status(403).json({ error: 'Only admins can view participants' });
-        }
+        // Members, Admins, and Super Admins are all allowed to view participants
+        // (Management actions remain restricted in their respective endpoints)
 
         const circle = await Circle.findById(circleId);
         if (!circle) {

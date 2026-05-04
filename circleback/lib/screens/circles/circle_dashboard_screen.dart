@@ -279,6 +279,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
           HttpAuthService.currentUserRole == 'admin' ||
           HttpAuthService.currentIsInvitedAdmin)
           ? FloatingActionButton.extended(
+              heroTag: 'circle_dashboard_fab',
               onPressed: () async {
                 final result = await Navigator.pushNamed(context, CreateCircleScreen.routeName);
                 if (result == true) {
@@ -385,6 +386,8 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
 
   Widget _buildWelcomeSection(String firstName) {
     final displayAssociationName = _associationName ?? AppLocalizations.of(context).cdNoAssoc;
+    final role = HttpAuthService.currentUserRole ?? 'SA';
+    final isSA = role == 'SA';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,6 +422,37 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                 ),
               ),
             ),
+            if (isSA) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, '/org-management').then((_) => _fetchData());
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.edit_rounded, size: 13, color: AppColors.primaryDark),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Edit Org',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 12),
@@ -1110,6 +1144,10 @@ class _AssociationMembersModalState extends State<_AssociationMembersModal> {
 
   @override
   Widget build(BuildContext context) {
+    // Capture the modal's own context before entering the DraggableScrollableSheet
+    // builder so we can use it for navigation (avoids stale-context loading bug).
+    final modalContext = context;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       minChildSize: 0.4,
@@ -1134,7 +1172,7 @@ class _AssociationMembersModalState extends State<_AssociationMembersModal> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Association Members', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(modalContext)),
                   ],
                 ),
               ),
@@ -1151,7 +1189,7 @@ class _AssociationMembersModalState extends State<_AssociationMembersModal> {
                           padding: const EdgeInsets.all(24),
                           itemCount: _members.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (ctx, i) {
+                          itemBuilder: (_, i) {
                             final m = _members[i];
                             final name = m['name'] ?? 'Unknown';
                             final email = m['email'] ?? '';
@@ -1161,15 +1199,20 @@ class _AssociationMembersModalState extends State<_AssociationMembersModal> {
                             Color roleColor = role == 'SA' ? const Color(0xFFC9A84C) : role == 'admin' ? const Color(0xFF34D399) : const Color(0xFF818CF8);
                             
                             return GestureDetector(
-                              onTap: () => Navigator.push(
-                                ctx,
-                                MaterialPageRoute(
-                                  builder: (_) => UserProfileScreen(
-                                    userId: m['id'] as int,
-                                    userName: name,
+                              onTap: () {
+                                // First close the bottom sheet, then navigate to the
+                                // profile — this prevents the stale-context loading loop.
+                                Navigator.pop(modalContext);
+                                Navigator.push(
+                                  modalContext,
+                                  MaterialPageRoute(
+                                    builder: (_) => UserProfileScreen(
+                                      userId: m['id'] as int,
+                                      userName: name,
+                                    ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(

@@ -8,6 +8,7 @@ import '../../widgets/auth_text_field.dart';
 import '../../widgets/user_avatar.dart';
 import '../../services/circle_service.dart';
 import '../../services/http_auth_service.dart';
+import '../../widgets/add_friend_button.dart';
 import '../posts/user_profile_screen.dart';
 
 /// Screen representing the details of a specific Circle.
@@ -251,12 +252,18 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
             _buildMeetingsSection(),
             const SizedBox(height: 32),
             _buildPhotosSection(),
+            // ── Admin/SA: existing Manage Participants ────────────
             if (HttpAuthService.currentUserRole == 'SA' || 
                 HttpAuthService.currentUserRole == 'admin' || 
                 HttpAuthService.currentIsInvitedAdmin ||
                 _circleData?['isAdmin'] == true) ...[
               const SizedBox(height: 32),
               _buildParticipantsSection(),
+            ],
+            // ── Member: read-only Participants section ───────────
+            if (!_isAdminUser) ...[
+              const SizedBox(height: 32),
+              _buildMemberParticipantsSection(),
             ],
             const SizedBox(height: 32),
             // Grey box at the bottom as seen in mockup
@@ -1126,6 +1133,32 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     );
   }
 
+  /// Read-only participants section shown to Members (no admin controls).
+  Widget _buildMemberParticipantsSection() {
+    final circleId = _circleData!['id'] as int;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.people_outline, color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              AppLocalizations.of(context).cdParticipantsTitle,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _MemberParticipantsList(circleId: circleId),
+      ],
+    );
+  }
+
   void _showEditModal() {
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(text: _circleData?['name']);
@@ -1303,6 +1336,159 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
   }
 }
 
+/// Read-only list of circle participants shown to Member-role users.
+/// Each card is tappable (opens UserProfileScreen) and includes an AddFriendButton.
+class _MemberParticipantsList extends StatefulWidget {
+  final int circleId;
+  const _MemberParticipantsList({required this.circleId});
+
+  @override
+  State<_MemberParticipantsList> createState() => _MemberParticipantsListState();
+}
+
+class _MemberParticipantsListState extends State<_MemberParticipantsList> {
+  bool _isLoading = true;
+  String? _error;
+  List<dynamic> _participants = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    try {
+      final list = await CircleService().getCircleParticipants(widget.circleId);
+      // Only show members who have actually joined
+      final joined = list.where((p) => p['hasJoined'] == true).toList();
+      if (mounted) setState(() { _participants = joined; _isLoading = false; });
+    } catch (e) {
+      debugPrint('Fetch participants error: $e');
+      if (mounted) {
+        setState(() {
+          _error = AppLocalizations.of(context).cdLoadParticipantsError;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: Text(_error!, style: const TextStyle(color: Colors.red))),
+      );
+    }
+    if (_participants.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderSoft),
+        ),
+        child: Center(
+          child: Text(
+            AppLocalizations.of(context).cdNoParticipantsYet,
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: _participants.map<Widget>((p) {
+        final name         = p['name'] as String? ?? 'Unknown';
+        final profilePic   = p['profilePicture'] as String?;
+        final assocLogo    = p['associationLogo'] as String?;
+        final userId       = p['id'] as int;
+        final joinedAtStr  = p['joinedAt'] as String?;
+
+        String joinedDate = '';
+        if (joinedAtStr != null) {
+          try {
+            final dt = DateTime.parse(joinedAtStr);
+            joinedDate = AppLocalizations.of(context).cdJoinedOn(DateFormat('MMM d, yyyy').format(dt));
+          } catch (_) {}
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserProfileScreen(userId: userId, userName: name),
+                ),
+              ),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.borderSoft),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    // Avatar
+                    UserAvatar(
+                      profilePictureUrl: profilePic,
+                      associationLogoUrl: assocLogo,
+                      name: name,
+                      size: 46,
+                      animate: true,
+                      fallbackColor: AppColors.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    // Name + joined date
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          if (joinedDate.isNotEmpty)
+                            Text(
+                              joinedDate,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    // Add Friend button (compact)
+                    AddFriendButton(targetUserId: userId),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
 class _CircleParticipantsModal extends StatefulWidget {
   final int circleId;
   const _CircleParticipantsModal({required this.circleId});
@@ -1332,9 +1518,10 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
         });
       }
     } catch (e) {
+      debugPrint('Fetch participants error: $e');
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = AppLocalizations.of(context).cdLoadParticipantsError;
           _isLoading = false;
         });
       }
@@ -1383,7 +1570,7 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
                           controller: controller,
                           padding: const EdgeInsets.all(24),
                           itemCount: _participants.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (context2, i2) => const SizedBox(height: 12),
                           itemBuilder: (ctx, i) {
                             final p = _participants[i];
                             final name = p['name'] ?? 'Unknown';
@@ -1396,7 +1583,8 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
                             if (hasJoined && joinedAtStr != null) {
                               try {
                                 final dt = DateTime.parse(joinedAtStr);
-                                joinedDate = DateFormat('MMM d, yyyy').format(dt);
+                                final formattedDate = DateFormat('MMM d, yyyy').format(dt);
+                                joinedDate = AppLocalizations.of(context).cdJoinedOn(formattedDate);
                               } catch (_) {}
                             }
 
@@ -1434,7 +1622,7 @@ class _CircleParticipantsModalState extends State<_CircleParticipantsModal> {
                                         children: [
                                           Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                                           if (hasJoined && joinedDate.isNotEmpty)
-                                            Text('Joined $joinedDate', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                                            Text(joinedDate, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
                                         ],
                                       ),
                                     ),

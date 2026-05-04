@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const auth = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
+const requireSA = require('../middleware/requireSA');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -74,14 +75,14 @@ router.post('/upload-profile-picture', authMiddleware, profileUpload.single('pro
 router.delete('/profile-picture', authMiddleware, auth.deleteProfilePicture);
 
 
-// Association (onboarding)
-router.post('/association', authMiddleware, auth.createAssociation);
+// Association (onboarding) — all mutating routes are SA-only at both route and controller level
+router.post('/association', authMiddleware, requireSA, auth.createAssociation);
 router.get('/association/members', authMiddleware, auth.getAssociationMembers);
-router.get('/association', authMiddleware, auth.getAssociation);
+router.get('/association', authMiddleware, requireSA, auth.getAssociation);
 
-// Association logo (dedicated file upload — separate from the JSON save)
-router.post('/association/logo', authMiddleware, logoUpload.single('logo'), auth.uploadAssociationLogo);
-router.delete('/association/logo', authMiddleware, auth.deleteAssociationLogo);
+// Association logo (dedicated file upload — SA only)
+router.post('/association/logo', authMiddleware, requireSA, logoUpload.single('logo'), auth.uploadAssociationLogo);
+router.delete('/association/logo', authMiddleware, requireSA, auth.deleteAssociationLogo);
 
 
 // Invite link validation (no auth needed — called before signup)

@@ -237,12 +237,22 @@ class AppLocalizations {
       'cdCircleUpdatedSuccess': 'Circle updated successfully!',
       'cdJoined': 'Joined',
       'cdNotJoined': 'Not Joined',
+      'cdParticipantsTitle': 'Participants',
+      'cdLoadParticipantsError': 'Unable to load participants. Please try again.',
+      'cdNoParticipantsYet': 'No participants yet.',
+      'cdJoinedOn': 'Joined {date}',
       'prTitle': 'Pending Requests',
       'prNoRequests': 'No pending requests.',
       'prAdmin': 'Admin',
       'prReject': 'Reject',
       'prApprove': 'Approve',
       'prRequestAction': 'Request {status}',
+      'afAddFriend': 'Add Friend',
+      'afAcceptRequest': 'Accept Request',
+      'afRequestSent': 'Request Sent',
+      'afMessage': 'Message',
+      'afFriendRequestSentSuccess': 'Friend request sent',
+      'afFriendRequestAccepted': 'Friend request accepted',
       'cdRequestsBtn': 'Requests',
       'cdInviteToCircle': 'Invite to {name}',
       'cdEmailAddress': 'Email address',
@@ -309,6 +319,45 @@ class AppLocalizations {
       'upAdmin': 'Admin',
       'upMember': 'Member',
       'upRetry': 'Retry',
+      // New Group screen
+      'ngTitle': 'New Group',
+      'ngCreate': 'Create',
+      'ngGroupNameHint': 'Group name...',
+      'ngSearchMembers': 'Search members...',
+      'ngNoMembersFound': 'No members found',
+      'ngEnterGroupName': 'Please enter a group name',
+      'ngSelectMember': 'Please select at least 1 member',
+      'ngGroupCreated': 'Group "{name}" created!',
+      // Messages screen
+      'msTitle': 'Messages',
+      'msSearchHint': 'Search conversations...',
+      'msUnread': '{count} unread',
+      'msNoConversations': 'No conversations yet',
+      'msNoResults': 'No results',
+      'msStartHint': 'Send a chat invitation from a member\'s profile\nor create a group',
+      'msNewFriendRequests': 'New Friend Requests',
+      'msTapToView': 'Tap to view and respond',
+      'msYesterday': 'Yesterday',
+      // Friend Requests screen
+      'frTitle': 'Friend Requests',
+      'frReceived': 'Received',
+      'frSent': 'Sent',
+      'frNoReceived': 'No received requests',
+      'frNoSent': 'No sent requests',
+      'frWantsToBeYourFriend': 'Wants to be your friend',
+      'frAccepted': 'Friend request accepted',
+      'frDeclined': 'Friend request declined',
+      'frPending': 'Pending',
+      // Friend List screen
+      'flTitle': 'My Friends',
+      'flNoFriends': 'No friends yet',
+      'flRemove': 'Remove',
+      'flRemoveTitle': 'Remove Friend?',
+      'flRemoveMessage': 'Are you sure you want to remove {name} from your friends?',
+      'flRemoveConfirm': 'Remove',
+      'flRemoveSuccess': 'Friend removed successfully',
+      'flRemoveError': 'Failed to remove friend',
+      'flMyFriends': 'Friend',
     },
 
     // ── French ───────────────────────────────────────────────────────────
@@ -524,12 +573,22 @@ class AppLocalizations {
       'cdCircleUpdatedSuccess': 'Cercle mis à jour avec succès !',
       'cdJoined': 'Rejoint',
       'cdNotJoined': 'Non rejoint',
+      'cdParticipantsTitle': 'Participants',
+      'cdLoadParticipantsError': 'Impossible de charger les participants. Veuillez réessayer.',
+      'cdNoParticipantsYet': 'Aucun participant pour le moment.',
+      'cdJoinedOn': 'A rejoint le {date}',
       'prTitle': 'Demandes en attente',
       'prNoRequests': 'Aucune demande en attente.',
       'prAdmin': 'Admin',
       'prReject': 'Rejeter',
       'prApprove': 'Approuver',
       'prRequestAction': 'Demande {status}',
+      'afAddFriend': 'Ajouter un ami',
+      'afAcceptRequest': 'Accepter la demande',
+      'afRequestSent': 'Demande envoyée',
+      'afMessage': 'Message',
+      'afFriendRequestSentSuccess': 'Demande d\'ami envoyée',
+      'afFriendRequestAccepted': 'Demande d\'ami acceptée',
       'cdRequestsBtn': 'Demandes',
       'cdInviteToCircle': 'Inviter à {name}',
       'cdEmailAddress': 'Adresse e-mail',
@@ -596,6 +655,45 @@ class AppLocalizations {
       'upAdmin': 'Admin',
       'upMember': 'Membre',
       'upRetry': 'Réessayer',
+      // New Group screen
+      'ngTitle': 'Nouveau Groupe',
+      'ngCreate': 'Créer',
+      'ngGroupNameHint': 'Nom du groupe...',
+      'ngSearchMembers': 'Rechercher des membres...',
+      'ngNoMembersFound': 'Aucun membre trouvé',
+      'ngEnterGroupName': 'Veuillez entrer un nom de groupe',
+      'ngSelectMember': 'Veuillez sélectionner au moins 1 membre',
+      'ngGroupCreated': 'Groupe "{name}" créé !',
+      // Messages screen
+      'msTitle': 'Messages',
+      'msSearchHint': 'Rechercher des conversations...',
+      'msUnread': '{count} non lus',
+      'msNoConversations': 'Aucune conversation',
+      'msNoResults': 'Aucun résultat',
+      'msStartHint': 'Envoyez une invitation depuis le profil d\'un membre\nou créez un groupe',
+      'msNewFriendRequests': 'Nouvelles demandes d\'amis',
+      'msTapToView': 'Appuyer pour voir et répondre',
+      'msYesterday': 'Hier',
+      // Friend Requests screen
+      'frTitle': 'Demandes d\'amis',
+      'frReceived': 'Reçues',
+      'frSent': 'Envoyées',
+      'frNoReceived': 'Aucune demande reçue',
+      'frNoSent': 'Aucune demande envoyée',
+      'frWantsToBeYourFriend': 'Veut être votre ami',
+      'frAccepted': 'Demande d\'amitié acceptée',
+      'frDeclined': 'Demande d\'amitié refusée',
+      'frPending': 'En attente',
+      // Friend List screen
+      'flTitle': 'Mes amis',
+      'flNoFriends': 'Aucun ami pour le moment',
+      'flRemove': 'Supprimer',
+      'flRemoveTitle': 'Supprimer l\'ami ?',
+      'flRemoveMessage': 'Êtes-vous sûr de vouloir supprimer {name} de vos amis ?',
+      'flRemoveConfirm': 'Supprimer',
+      'flRemoveSuccess': 'Ami supprimé avec succès',
+      'flRemoveError': 'Échec de la suppression de l\'ami',
+      'flMyFriends': 'Ami',
     },
 
     // ── Spanish ──────────────────────────────────────────────────────────
@@ -810,12 +908,22 @@ class AppLocalizations {
       'cdCircleUpdatedSuccess': '¡Círculo actualizado con éxito!',
       'cdJoined': 'Unido',
       'cdNotJoined': 'No se unió',
+      'cdParticipantsTitle': 'Participantes',
+      'cdLoadParticipantsError': 'No se pudieron cargar los participantes. Por favor, inténtalo de nuevo.',
+      'cdNoParticipantsYet': 'Aún no hay participantes.',
+      'cdJoinedOn': 'Se unió el {date}',
       'prTitle': 'Solicitudes pendientes',
       'prNoRequests': 'No hay solicitudes pendientes.',
       'prAdmin': 'Admin',
       'prReject': 'Rechazar',
       'prApprove': 'Aprobar',
       'prRequestAction': 'Solicitud {status}',
+      'afAddFriend': 'Añadir amigo',
+      'afAcceptRequest': 'Aceptar solicitud',
+      'afRequestSent': 'Solicitud enviada',
+      'afMessage': 'Mensaje',
+      'afFriendRequestSentSuccess': 'Solicitud de amistad enviada',
+      'afFriendRequestAccepted': 'Solicitud de amistad aceptada',
       'cdRequestsBtn': 'Solicitudes',
       'cdInviteToCircle': 'Invitar a {name}',
       'cdEmailAddress': 'Dirección de correo',
@@ -882,6 +990,45 @@ class AppLocalizations {
       'upAdmin': 'Administrador',
       'upMember': 'Miembro',
       'upRetry': 'Reintentar',
+      // New Group screen
+      'ngTitle': 'Nuevo Grupo',
+      'ngCreate': 'Crear',
+      'ngGroupNameHint': 'Nombre del grupo...',
+      'ngSearchMembers': 'Buscar miembros...',
+      'ngNoMembersFound': 'No se encontraron miembros',
+      'ngEnterGroupName': 'Por favor, ingresa un nombre de grupo',
+      'ngSelectMember': 'Por favor, selecciona al menos 1 miembro',
+      'ngGroupCreated': '¡Grupo "{name}" creado!',
+      // Messages screen
+      'msTitle': 'Mensajes',
+      'msSearchHint': 'Buscar conversaciones...',
+      'msUnread': '{count} no leídos',
+      'msNoConversations': 'Sin conversaciones aún',
+      'msNoResults': 'Sin resultados',
+      'msStartHint': 'Envía una invitación de chat desde el perfil de un miembro\no crea un grupo',
+      'msNewFriendRequests': 'Nuevas solicitudes de amistad',
+      'msTapToView': 'Toca para ver y responder',
+      'msYesterday': 'Ayer',
+      // Friend Requests screen
+      'frTitle': 'Solicitudes de amistad',
+      'frReceived': 'Recibidas',
+      'frSent': 'Enviadas',
+      'frNoReceived': 'Sin solicitudes recibidas',
+      'frNoSent': 'Sin solicitudes enviadas',
+      'frWantsToBeYourFriend': 'Quiere ser tu amigo',
+      'frAccepted': 'Solicitud de amistad aceptada',
+      'frDeclined': 'Solicitud de amistad rechazada',
+      'frPending': 'Pendiente',
+      // Friend List screen
+      'flTitle': 'Mis amigos',
+      'flNoFriends': 'Sin amigos aún',
+      'flRemove': 'Eliminar',
+      'flRemoveTitle': '¿Eliminar amigo?',
+      'flRemoveMessage': '¿Estás seguro de que deseas eliminar a {name} de tus amigos?',
+      'flRemoveConfirm': 'Eliminar',
+      'flRemoveSuccess': 'Amigo eliminado con éxito',
+      'flRemoveError': 'Error al eliminar al amigo',
+      'flMyFriends': 'Amigo',
     },
 
     // ── Arabic ───────────────────────────────────────────────────────────
@@ -1096,12 +1243,22 @@ class AppLocalizations {
       'cdCircleUpdatedSuccess': 'تم تحديث الدائرة بنجاح!',
       'cdJoined': 'انضم',
       'cdNotJoined': 'لم ينضم',
+      'cdParticipantsTitle': 'المشاركون',
+      'cdLoadParticipantsError': 'تعذر تحميل المشاركين. يرجى المحاولة مرة أخرى.',
+      'cdNoParticipantsYet': 'لا يوجد مشاركون بعد.',
+      'cdJoinedOn': 'انضم في {date}',
       'prTitle': 'الطلبات المعلقة',
       'prNoRequests': 'لا توجد طلبات معلقة.',
       'prAdmin': 'المسؤول',
       'prReject': 'رفض',
       'prApprove': 'موافقة',
       'prRequestAction': 'تم {status} الطلب',
+      'afAddFriend': 'إضافة صديق',
+      'afAcceptRequest': 'قبول الطلب',
+      'afRequestSent': 'تم إرسال الطلب',
+      'afMessage': 'رسالة',
+      'afFriendRequestSentSuccess': 'تم إرسال طلب الصداقة',
+      'afFriendRequestAccepted': 'تم قبول طلب الصداقة',
       'cdRequestsBtn': 'الطلبات',
       'cdInviteToCircle': 'دعوة إلى {name}',
       'cdEmailAddress': 'البريد الإلكتروني',
@@ -1168,6 +1325,45 @@ class AppLocalizations {
       'upAdmin': 'مسؤول',
       'upMember': 'عضو',
       'upRetry': 'إعادة المحاولة',
+      // New Group screen
+      'ngTitle': 'مجموعة جديدة',
+      'ngCreate': 'إنشاء',
+      'ngGroupNameHint': 'اسم المجموعة...',
+      'ngSearchMembers': 'البحث عن الأعضاء...',
+      'ngNoMembersFound': 'لم يتم العثور على أعضاء',
+      'ngEnterGroupName': 'الرجاء إدخال اسم المجموعة',
+      'ngSelectMember': 'الرجاء اختيار عضو واحد على الأقل',
+      'ngGroupCreated': 'تم إنشاء المجموعة "{name}"!',
+      // Messages screen
+      'msTitle': 'الرسائل',
+      'msSearchHint': 'البحث في المحادثات...',
+      'msUnread': '{count} غير مقروء',
+      'msNoConversations': 'لا توجد محادثات بعد',
+      'msNoResults': 'لا توجد نتائج',
+      'msStartHint': 'أرسل دعوة محادثة من ملف شخصي لعضو\nأو أنشئ مجموعة',
+      'msNewFriendRequests': 'طلبات صداقة جديدة',
+      'msTapToView': 'اضغط للعرض والرد',
+      'msYesterday': 'أمس',
+      // Friend Requests screen
+      'frTitle': 'طلبات الصداقة',
+      'frReceived': 'المستلمة',
+      'frSent': 'المرسلة',
+      'frNoReceived': 'لا توجد طلبات مستلمة',
+      'frNoSent': 'لا توجد طلبات مرسلة',
+      'frWantsToBeYourFriend': 'يريد أن يكون صديقك',
+      'frAccepted': 'تم قبول طلب الصداقة',
+      'frDeclined': 'تم رفض طلب الصداقة',
+      'frPending': 'قيد الانتظار',
+      // Friend List screen
+      'flTitle': 'أصدقائي',
+      'flNoFriends': 'لا أصدقاء بعد',
+      'flRemove': 'إزالة',
+      'flRemoveTitle': 'إزالة صديق؟',
+      'flRemoveMessage': 'هل أنت متأكد أنك تريد إزالة {name} من قائمة أصدقائك؟',
+      'flRemoveConfirm': 'إزالة',
+      'flRemoveSuccess': 'تمت إزالة الصديق بنجاح',
+      'flRemoveError': 'فشل في إزالة الصديق',
+      'flMyFriends': 'صديق',
     },
   };
 
@@ -1396,6 +1592,10 @@ class AppLocalizations {
   String get cdCircleUpdatedSuccess => _t('cdCircleUpdatedSuccess');
   String get cdJoined => _t('cdJoined');
   String get cdNotJoined => _t('cdNotJoined');
+  String get cdParticipantsTitle => _t('cdParticipantsTitle');
+  String get cdLoadParticipantsError => _t('cdLoadParticipantsError');
+  String get cdNoParticipantsYet => _t('cdNoParticipantsYet');
+  String cdJoinedOn(String date) => _t('cdJoinedOn').replaceAll('{date}', date);
 
   // Pending Requests
   String get prTitle => _t('prTitle');
@@ -1416,6 +1616,14 @@ class AppLocalizations {
     }
     return _t('prRequestAction').replaceAll('{status}', status);
   }
+
+  // Add Friend Button
+  String get afAddFriend => _t('afAddFriend');
+  String get afAcceptRequest => _t('afAcceptRequest');
+  String get afRequestSent => _t('afRequestSent');
+  String get afMessage => _t('afMessage');
+  String get afFriendRequestSentSuccess => _t('afFriendRequestSentSuccess');
+  String get afFriendRequestAccepted => _t('afFriendRequestAccepted');
 
   // Dashboard missing
   String get cdRequestsBtn => _t('cdRequestsBtn');
@@ -1490,6 +1698,49 @@ class AppLocalizations {
   String get upAdmin => _t('upAdmin');
   String get upMember => _t('upMember');
   String get upRetry => _t('upRetry');
+
+  // New Group screen
+  String get ngTitle => _t('ngTitle');
+  String get ngCreate => _t('ngCreate');
+  String get ngGroupNameHint => _t('ngGroupNameHint');
+  String get ngSearchMembers => _t('ngSearchMembers');
+  String get ngNoMembersFound => _t('ngNoMembersFound');
+  String get ngEnterGroupName => _t('ngEnterGroupName');
+  String get ngSelectMember => _t('ngSelectMember');
+  String ngGroupCreated(String name) => _t('ngGroupCreated').replaceAll('{name}', name);
+
+  // Messages screen
+  String get msTitle => _t('msTitle');
+  String get msSearchHint => _t('msSearchHint');
+  String msUnread(int count) => _t('msUnread').replaceAll('{count}', count.toString());
+  String get msNoConversations => _t('msNoConversations');
+  String get msNoResults => _t('msNoResults');
+  String get msStartHint => _t('msStartHint');
+  String get msNewFriendRequests => _t('msNewFriendRequests');
+  String get msTapToView => _t('msTapToView');
+  String get msYesterday => _t('msYesterday');
+
+  // Friend Requests screen
+  String get frTitle => _t('frTitle');
+  String get frReceived => _t('frReceived');
+  String get frSent => _t('frSent');
+  String get frNoReceived => _t('frNoReceived');
+  String get frNoSent => _t('frNoSent');
+  String get frWantsToBeYourFriend => _t('frWantsToBeYourFriend');
+  String get frAccepted => _t('frAccepted');
+  String get frDeclined => _t('frDeclined');
+  String get frPending => _t('frPending');
+
+  // Friend List screen
+  String get flTitle => _t('flTitle');
+  String get flNoFriends => _t('flNoFriends');
+  String get flRemove => _t('flRemove');
+  String get flRemoveTitle => _t('flRemoveTitle');
+  String flRemoveMessage(String name) => _t('flRemoveMessage').replaceAll('{name}', name);
+  String get flRemoveConfirm => _t('flRemoveConfirm');
+  String get flRemoveSuccess => _t('flRemoveSuccess');
+  String get flRemoveError => _t('flRemoveError');
+  String get flMyFriends => _t('flMyFriends');
 
   // Dynamic enum translation
   String translateStatus(String status) {

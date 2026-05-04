@@ -14,11 +14,19 @@ import 'screens/auth/edit_profile_screen.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/home/sa_dashboard_screen.dart';
+import 'screens/home/organization_management_screen.dart';
 import 'screens/main_shell_screen.dart';
 import 'screens/circles/circle_dashboard_screen.dart';
 import 'screens/circles/create_circle_screen.dart';
 import 'screens/circles/circle_details_screen.dart';
 import 'screens/circles/member_circles_screen.dart';
+import 'screens/messaging/messages_screen.dart';
+import 'screens/messaging/chat_screen.dart';
+import 'screens/messaging/new_group_screen.dart';
+import 'screens/messaging/invitations_screen.dart';
+import 'screens/messaging/group_info_screen.dart';
+import 'screens/posts/friend_requests_screen.dart';
+import 'screens/posts/friend_list_screen.dart';
 import 'services/http_auth_service.dart';
 
 void main() async {
@@ -158,11 +166,19 @@ class _BantouAppState extends State<BantouApp> {
           PendingApprovalScreen.routeName: (_) => const PendingApprovalScreen(),
           HomeScreen.routeName: (_) => const HomeScreen(),
           SaDashboardScreen.routeName: (_) => const SaDashboardScreen(),
+          OrganizationManagementScreen.routeName: (_) => const OrganizationManagementScreen(),
           MainShellScreen.routeName: (_) => const MainShellScreen(),
           CircleDashboardScreen.routeName: (_) => const CircleDashboardScreen(),
           CreateCircleScreen.routeName: (_) => const CreateCircleScreen(),
           CircleDetailsScreen.routeName: (_) => const CircleDetailsScreen(),
           MemberCirclesScreen.routeName: (_) => const MemberCirclesScreen(),
+          MessagesScreen.routeName: (_) => const MessagesScreen(),
+          ChatScreen.routeName: (_) => const ChatScreen(),
+          NewGroupScreen.routeName: (_) => const NewGroupScreen(),
+          InvitationsScreen.routeName: (_) => const InvitationsScreen(),
+          GroupInfoScreen.routeName: (_) => const GroupInfoScreen(),
+          FriendRequestsScreen.routeName: (_) => const FriendRequestsScreen(),
+          FriendListScreen.routeName: (_) => const FriendListScreen(),
         },
       ),
     );

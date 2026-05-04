@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../../models/user_profile.dart';
 import '../../services/post_service.dart';
 import '../../widgets/user_avatar.dart';
+import '../../widgets/add_friend_button.dart';
 import '../../l10n/app_localizations.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -185,6 +186,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // ── Add Friend button ──────────────────────────────
+                AddFriendButton(targetUserId: widget.userId),
+                const SizedBox(height: 16),
+                
                 // About / Bio
                 _buildSection(
                   icon: Icons.person_outline,

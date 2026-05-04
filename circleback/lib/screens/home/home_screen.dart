@@ -7,6 +7,7 @@ import '../../widgets/language_picker.dart';
 import '../auth/edit_profile_screen.dart';
 import '../circles/circle_dashboard_screen.dart';
 import '../circles/member_circles_screen.dart';
+import 'organization_management_screen.dart';
 import 'sa_dashboard_screen.dart';
 
 /// Static home screen — placeholder after successful authentication.
@@ -14,10 +15,33 @@ import 'sa_dashboard_screen.dart';
 ///
 /// Expects route arguments `Map<String, String>? { 'name': ..., 'email': ... }`
 /// passed from the auth screen after successful sign-in.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   static const routeName = '/home';
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _associationName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssocName();
+  }
+
+  Future<void> _loadAssocName() async {
+    final role = HttpAuthService.currentUserRole ?? 'SA';
+    if (role != 'SA') return;
+    try {
+      final data = await HttpAuthService().getAssociation();
+      if (mounted && data != null) {
+        setState(() => _associationName = data['name'] ?? '');
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,6 +158,49 @@ class HomeScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
+          // Association name + SA edit icon
+          if (_associationName.isNotEmpty || isSA) ...[  
+            Row(
+              children: [
+                if (_associationName.isNotEmpty)
+                  Expanded(
+                    child: Text(
+                      _associationName,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFC9A84C),
+                        letterSpacing: 0.3,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (isSA)
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(
+                      context, OrganizationManagementScreen.routeName).then((_) => _loadAssocName()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC9A84C).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFC9A84C).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.edit_rounded, size: 13, color: Color(0xFFC9A84C)),
+                          const SizedBox(width: 4),
+                          Text('Edit Org', style: GoogleFonts.inter(
+                            fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFFC9A84C))),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
             l.welcomeBack,
             style: GoogleFonts.inter(
