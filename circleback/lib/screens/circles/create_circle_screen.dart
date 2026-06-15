@@ -4,6 +4,11 @@ import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../services/circle_service.dart';
+import '../../models/meeting_schedule.dart';
+import '../../models/location_data.dart';
+import '../../widgets/location_picker_field.dart';
+import 'widgets/meeting_scheduler_sheet.dart';
+import 'dart:convert';
 
 /// Screen representing the Circle Dashboard.
 /// This matches the UI from the provided design showing a list of circles
@@ -30,6 +35,8 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
 
   String _visibilityType = 'Public';
   List<Map<String, dynamic>> _selectedMembers = [];
+  MeetingSchedule? _meetingSchedule;
+  LocationData? _meetingLocation;
 
   bool _isLoading = false;
 
@@ -62,6 +69,72 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
     });
   }
 
+  Future<void> _pickDateTime() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null && mounted) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: AppColors.primary,
+                onPrimary: Colors.white,
+                onSurface: AppColors.textPrimary,
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (pickedTime != null && mounted) {
+        final schedule = await showModalBottomSheet<MeetingSchedule>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => MeetingSchedulerSheet(
+            pickedDate: pickedDate,
+            pickedTime: pickedTime,
+          ),
+        );
+
+        if (schedule != null) {
+          setState(() {
+            _meetingSchedule = schedule;
+            // Update controller with the smart summary so the user sees the human-readable text
+            _meetingPlanningController.text = schedule.toDisplayString().replaceAll('\n', ' - ');
+          });
+        }
+      }
+    }
+  }
+
   void _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -69,6 +142,12 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
 
     try {
       final service = CircleService();
+      
+      // Serialize the structured recurrence data for the backend
+      final meetingPlanningData = _meetingSchedule != null 
+          ? jsonEncode(_meetingSchedule!.toJson())
+          : _meetingPlanningController.text.trim();
+
       await service.createCircle(
         name: _circleNameController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -76,9 +155,12 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
         city: _cityController.text.trim(),
         responsible: _responsibleController.text.trim(),
         viceResponsible: _viceResponsibleController.text.trim(),
-        meetingPlanning: _meetingPlanningController.text.trim(),
+        meetingPlanning: meetingPlanningData,
         visibilityType: _visibilityType,
         initialMembers: _selectedMembers.map((m) => m['id'] as int).toList(),
+        meetingLat: _meetingLocation?.lat,
+        meetingLng: _meetingLocation?.lng,
+        meetingAddress: _meetingLocation?.address,
       );
 
       if (mounted) {
@@ -289,14 +371,45 @@ class _CreateCircleScreenState extends State<CreateCircleScreen> {
                   const SizedBox(height: 16),
                   
                   // Meeting Planning
-                  AuthTextField(
-                    label: l.cdMeetingPlanningLabel,
-                    hint: l.cdMeetingPlanningHint,
-                    icon: Icons.calendar_month_rounded,
-                    controller: _meetingPlanningController,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.cdMeetingPlanningLabel,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _meetingPlanningController,
+                        readOnly: true,
+                        maxLines: null,
+                        onTap: _pickDateTime,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                        style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: l.cdMeetingPlanningHint,
+                          prefixIcon: const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
                   ),
                   
+                  const SizedBox(height: 32),
+
+                  // ── Meeting Location ──────────────────────────────────────
+                  _buildSectionTitle(AppLocalizations.of(context).cdMeetingLocation),
+                  const SizedBox(height: 16),
+                  LocationPickerField(
+                    selectedLocation: _meetingLocation,
+                    onLocationSelected: (loc) {
+                      setState(() => _meetingLocation = loc);
+                    },
+                  ),
+
                   const SizedBox(height: 40),
                   
                   // Save Button

@@ -19,6 +19,9 @@ class CircleService {
     required String meetingPlanning,
     String visibilityType = 'Public',
     List<int> initialMembers = const [],
+    double? meetingLat,
+    double? meetingLng,
+    String? meetingAddress,
   }) async {
     try {
       final token = await _getToken();
@@ -40,6 +43,9 @@ class CircleService {
           'meetingPlanning': meetingPlanning,
           'visibilityType': visibilityType,
           'initialMembers': initialMembers,
+          if (meetingLat != null) 'meetingLat': meetingLat,
+          if (meetingLng != null) 'meetingLng': meetingLng,
+          if (meetingAddress != null) 'meetingAddress': meetingAddress,
         }),
       );
 
@@ -154,10 +160,34 @@ class CircleService {
     required String responsible,
     required String viceResponsible,
     required String meetingPlanning,
+    double? meetingLat,
+    double? meetingLng,
+    String? meetingAddress,
+    bool clearLocation = false,
   }) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
+
+      final body = <String, dynamic>{
+        'name': name,
+        'description': description,
+        'country': country,
+        'city': city,
+        'responsible': responsible,
+        'viceResponsible': viceResponsible,
+        'meetingPlanning': meetingPlanning,
+      };
+
+      if (clearLocation) {
+        body['meetingLat'] = null;
+        body['meetingLng'] = null;
+        body['meetingAddress'] = null;
+      } else if (meetingLat != null) {
+        body['meetingLat'] = meetingLat;
+        body['meetingLng'] = meetingLng;
+        body['meetingAddress'] = meetingAddress;
+      }
 
       final response = await http.put(
         Uri.parse('$baseUrl/$circleId'),
@@ -165,15 +195,7 @@ class CircleService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'name': name,
-          'description': description,
-          'country': country,
-          'city': city,
-          'responsible': responsible,
-          'viceResponsible': viceResponsible,
-          'meetingPlanning': meetingPlanning,
-        }),
+        body: jsonEncode(body),
       );
 
       final data = jsonDecode(response.body);

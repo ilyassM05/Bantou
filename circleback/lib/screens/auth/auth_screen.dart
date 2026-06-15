@@ -545,31 +545,31 @@ class _AuthScreenState extends State<AuthScreen>
           const SizedBox(height: 20),
           _buildSocialButtons(context),
           const SizedBox(height: 20),
-          Center(
-            child: RichText(
-              text: TextSpan(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                l.newToBantou,
                 style: GoogleFonts.inter(
                   fontSize: 13,
+                  height: 1.0,
                   color: AppColors.textSecondary,
                 ),
-                children: [
-                  TextSpan(text: l.newToBantou),
-                  WidgetSpan(
-                    child: GestureDetector(
-                      onTap: () => _tabController.animateTo(1),
-                      child: Text(
-                        l.createAnAccount,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
-            ),
+              GestureDetector(
+                onTap: () => _tabController.animateTo(1),
+                child: Text(
+                  l.createAnAccount,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.0,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildCopyright(context),
@@ -660,31 +660,31 @@ class _AuthScreenState extends State<AuthScreen>
           const SizedBox(height: 20),
           _buildSocialButtons(context),
           const SizedBox(height: 20),
-          Center(
-            child: RichText(
-              text: TextSpan(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                l.alreadyHaveAccount,
                 style: GoogleFonts.inter(
                   fontSize: 13,
+                  height: 1.0,
                   color: AppColors.textSecondary,
                 ),
-                children: [
-                  TextSpan(text: l.alreadyHaveAccount),
-                  WidgetSpan(
-                    child: GestureDetector(
-                      onTap: () => _tabController.animateTo(0),
-                      child: Text(
-                        l.signInLink,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
-            ),
+              GestureDetector(
+                onTap: () => _tabController.animateTo(0),
+                child: Text(
+                  l.signInLink,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.0,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _buildCopyright(context),

@@ -314,7 +314,19 @@ bootstrap.connect((err) => {
                                                                                     bootstrap.query(createUserBlocks, (err) => {
                                                                                         if (err) console.error('Error creating user_blocks table:', err);
                                                                                         else console.log('✔  Table `user_blocks` ready.');
-                                                                                        bootstrap.end();
+
+                                                                                        // ── Meeting Location columns (migration) ──────────────────
+                                                                                        const alterMeetingLocation = `
+                                                                                            ALTER TABLE circles
+                                                                                            ADD COLUMN IF NOT EXISTS meeting_lat     DECIMAL(10, 7) DEFAULT NULL,
+                                                                                            ADD COLUMN IF NOT EXISTS meeting_lng     DECIMAL(10, 7) DEFAULT NULL,
+                                                                                            ADD COLUMN IF NOT EXISTS meeting_address VARCHAR(500)   DEFAULT NULL
+                                                                                        `;
+                                                                                        bootstrap.query(alterMeetingLocation, (err) => {
+                                                                                            if (err) console.error('Error adding meeting location columns:', err);
+                                                                                            else console.log('✔  Meeting location columns ready.');
+                                                                                            bootstrap.end();
+                                                                                        });
                                                                                     });
                                                                                 });
                                                                             });

@@ -1,0 +1,156 @@
+@startuml Diagramme_Cas_Utilisation_Authentification
+
+' ============================================================
+'  Direction : gauche → droite (acteurs à gauche du système)
+' ============================================================
+left to right direction
+
+' ============================================================
+'  Configuration et style global
+' ============================================================
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam backgroundColor #FAFAFA
+skinparam roundcorner 12
+
+skinparam title {
+    FontSize 18
+    FontStyle Bold
+    FontColor #1A1A2E
+    BorderColor #4F46E5
+    BackgroundColor #EEF2FF
+}
+
+' --- Acteurs ---
+skinparam actor {
+    BackgroundColor #1A1A2E
+    BorderColor #1A1A2E
+    FontColor #1A1A2E
+    FontSize 13
+    FontStyle Bold
+}
+
+' --- Cas d'utilisation ---
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #4F46E5
+    BorderThickness 2
+    FontColor #1A1A2E
+    FontSize 12
+    ArrowColor #4F46E5
+    ArrowThickness 2
+}
+
+' --- Frontière système ---
+skinparam rectangle {
+    BackgroundColor #EEF2FF
+    BorderColor #4F46E5
+    BorderThickness 2
+    FontColor #4F46E5
+    FontSize 14
+    FontStyle Bold
+}
+
+skinparam note {
+    BackgroundColor #FFF8E1
+    BorderColor #F59E0B
+    FontColor #1A1A2E
+    FontSize 11
+}
+
+' ============================================================
+'  Titre
+' ============================================================
+title
+    <b>Diagramme de Cas d'Utilisation — Authentification sur la Plateforme</b>
+    <size:12><color:#6B7280>Système : CircleBack  |  Module : Connexion & Gestion des Sessions</color></size>
+end title
+
+' ============================================================
+'  Acteurs — tous à gauche du système
+' ============================================================
+actor "Membre"           as Membre
+actor "Admin"            as Admin
+actor "Super Admin"      as SuperAdmin
+actor "Système\nBackend" as Backend
+
+' Liens cachés pour aligner les acteurs verticalement (côté gauche)
+Membre     -[hidden]down-> Admin
+Admin      -[hidden]down-> SuperAdmin
+SuperAdmin -[hidden]down-> Backend
+
+' ============================================================
+'  Frontière système — UCs empilés verticalement
+' ============================================================
+rectangle "  <b>Plateforme CircleBack</b>  " as Systeme {
+
+    ' UC principal (niveau 1)
+    usecase "S'authentifier\nsur la plateforme" as UC_Auth #EEF2FF
+
+    ' UC inclus (niveau 2)
+    usecase "Vérifier\nles identifiants" as UC_Verif #E0E7FF
+    usecase "Générer\nun token JWT"      as UC_JWT   #E0E7FF
+
+    ' UC étendu (niveau 3)
+    usecase "Afficher un\nmessage d'erreur" as UC_Erreur #FEF3C7
+
+    ' ---- Liens cachés pour forcer l'empilement vertical des UC ----
+    UC_Auth  -[hidden]down-> UC_Verif
+    UC_Auth  -[hidden]down-> UC_JWT
+    UC_Verif -[hidden]down-> UC_Erreur
+    UC_JWT   -[hidden]down-> UC_Erreur
+}
+
+' ============================================================
+'  Associations : acteurs humains → UC principal
+' ============================================================
+Membre     --> UC_Auth
+Admin      --> UC_Auth
+SuperAdmin --> UC_Auth
+
+' ============================================================
+'  Relations <<include>>
+' ============================================================
+UC_Auth .down.> UC_Verif  : <<include>>
+UC_Auth .down.> UC_JWT    : <<include>>
+
+' ============================================================
+'  Relation <<extend>>
+' ============================================================
+UC_Erreur .up.> UC_Auth : <<extend>>
+
+' ============================================================
+'  Système Backend → traitements internes
+' ============================================================
+Backend --> UC_Verif
+Backend --> UC_JWT
+Backend --> UC_Erreur
+
+' ============================================================
+'  Notes explicatives
+' ============================================================
+note right of UC_Auth
+  <b>Scénario nominal :</b>
+  1. L'utilisateur lance l'application
+  2. Il saisit son e-mail + mot de passe
+  3. Le système vérifie les identifiants
+  4. Un token JWT est généré
+  5. Redirection vers le tableau de bord
+     selon le rôle (Membre / Admin / Super Admin)
+end note
+
+note right of UC_Erreur
+  <b>Scénario alternatif A1 :</b>
+  Identifiants incorrects →
+  affichage d'un message d'erreur
+  et nouvelle tentative demandée
+end note
+
+note right of UC_JWT
+  <b>Postcondition :</b>
+  Session active et sécurisée
+  par token JWT ; permissions
+  du rôle chargées et appliquées
+end note
+
+@enduml

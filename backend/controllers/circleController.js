@@ -30,7 +30,10 @@ exports.createCircle = async (req, res) => {
             viceResponsible,
             meetingPlanning,
             visibilityType = 'Public',
-            initialMembers = []
+            initialMembers = [],
+            meetingLat,
+            meetingLng,
+            meetingAddress
         } = req.body;
 
         if (!name || !country || !city || !responsible || !viceResponsible || !meetingPlanning) {
@@ -48,7 +51,10 @@ exports.createCircle = async (req, res) => {
             vice_responsible: viceResponsible,
             meeting_planning: meetingPlanning,
             visibility_type: visibilityType,
-            status: 'Active'
+            status: 'Active',
+            meeting_lat: meetingLat || null,
+            meeting_lng: meetingLng || null,
+            meeting_address: meetingAddress || null
         });
 
         if (visibilityType === 'Private') {
@@ -216,7 +222,10 @@ exports.getCircles = async (req, res) => {
                     meetingPlanning: c.meeting_planning,
                     visibilityType: c.visibility_type,
                     status: c.status,
-                    createdAt: c.created_at
+                    createdAt: c.created_at,
+                    meetingLat: c.meeting_lat ? parseFloat(c.meeting_lat) : null,
+                    meetingLng: c.meeting_lng ? parseFloat(c.meeting_lng) : null,
+                    meetingAddress: c.meeting_address || null
                 };
             })
         });
@@ -269,7 +278,10 @@ exports.updateCircle = async (req, res) => {
             viceResponsible,
             meetingPlanning,
             visibilityType,
-            status
+            status,
+            meetingLat,
+            meetingLng,
+            meetingAddress
         } = req.body;
 
         if (!name || !country || !city || !responsible || !viceResponsible || !meetingPlanning) {
@@ -285,7 +297,10 @@ exports.updateCircle = async (req, res) => {
             vice_responsible: viceResponsible,
             meeting_planning: meetingPlanning,
             visibility_type: visibilityType || circle.visibility_type,
-            status: status || circle.status
+            status: status || circle.status,
+            meeting_lat: meetingLat !== undefined ? meetingLat : circle.meeting_lat,
+            meeting_lng: meetingLng !== undefined ? meetingLng : circle.meeting_lng,
+            meeting_address: meetingAddress !== undefined ? meetingAddress : circle.meeting_address
         });
 
         res.status(200).json({

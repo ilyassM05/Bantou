@@ -26,7 +26,7 @@ class AppLocalizations {
       'signUpTab': 'Sign Up',
       // Fields
       'fullNameLabel': 'Full Name',
-      'fullNameHint': 'Name',
+      'fullNameHint': 'Full name',
       'phoneLabel': 'Phone Number',
       'phoneHint': 'Phone',
       'emailLabel': 'Email Address',
@@ -358,6 +358,14 @@ class AppLocalizations {
       'flRemoveSuccess': 'Friend removed successfully',
       'flRemoveError': 'Failed to remove friend',
       'flMyFriends': 'Friend',
+      // Meeting Location
+      'cdMeetingLocation': 'Meeting Location',
+      'cdMeetingLocationHint': 'Tap to set meeting location',
+      'cdOpenInMaps': 'Open in Google Maps',
+      'cdNoLocationSet': 'No meeting location set',
+      'cdSearchLocation': 'Search for an address\u2026',
+      'cdLocationSelected': 'Location selected',
+      'cdLocationError': 'Could not load locations. Please try again.',
     },
 
     // ── French ───────────────────────────────────────────────────────────
@@ -367,7 +375,7 @@ class AppLocalizations {
       'loginTab': 'Connexion',
       'signUpTab': 'Inscription',
       'fullNameLabel': 'Nom complet',
-      'fullNameHint': 'Nom',
+      'fullNameHint': 'Nom complet',
       'phoneLabel': 'Numéro de téléphone',
       'phoneHint': 'Téléphone',
       'emailLabel': 'Adresse e-mail',
@@ -694,6 +702,14 @@ class AppLocalizations {
       'flRemoveSuccess': 'Ami supprimé avec succès',
       'flRemoveError': 'Échec de la suppression de l\'ami',
       'flMyFriends': 'Ami',
+      // Meeting Location
+      'cdMeetingLocation': 'Lieu de r\u00e9union',
+      'cdMeetingLocationHint': 'Appuyez pour d\u00e9finir le lieu',
+      'cdOpenInMaps': 'Ouvrir dans Google Maps',
+      'cdNoLocationSet': 'Aucun lieu de r\u00e9union d\u00e9fini',
+      'cdSearchLocation': 'Rechercher une adresse\u2026',
+      'cdLocationSelected': 'Lieu s\u00e9lectionn\u00e9',
+      'cdLocationError': 'Impossible de charger les lieux. Veuillez r\u00e9essayer.',
     },
 
     // ── Spanish ──────────────────────────────────────────────────────────
@@ -703,7 +719,7 @@ class AppLocalizations {
       'loginTab': 'Iniciar sesión',
       'signUpTab': 'Registrarse',
       'fullNameLabel': 'Nombre completo',
-      'fullNameHint': 'Nombre',
+      'fullNameHint': 'Nombre completo',
       'phoneLabel': 'Número de teléfono',
       'phoneHint': 'Teléfono',
       'emailLabel': 'Correo electrónico',
@@ -1029,6 +1045,14 @@ class AppLocalizations {
       'flRemoveSuccess': 'Amigo eliminado con éxito',
       'flRemoveError': 'Error al eliminar al amigo',
       'flMyFriends': 'Amigo',
+      // Meeting Location
+      'cdMeetingLocation': 'Lugar de reuni\u00f3n',
+      'cdMeetingLocationHint': 'Toca para definir el lugar',
+      'cdOpenInMaps': 'Abrir en Google Maps',
+      'cdNoLocationSet': 'Sin lugar de reuni\u00f3n',
+      'cdSearchLocation': 'Buscar una direcci\u00f3n\u2026',
+      'cdLocationSelected': 'Lugar seleccionado',
+      'cdLocationError': 'No se pudieron cargar los lugares. Int\u00e9ntalo de nuevo.',
     },
 
     // ── Arabic ───────────────────────────────────────────────────────────
@@ -1038,7 +1062,7 @@ class AppLocalizations {
       'loginTab': 'تسجيل الدخول',
       'signUpTab': 'إنشاء حساب',
       'fullNameLabel': 'الاسم الكامل',
-      'fullNameHint': 'الاسم',
+      'fullNameHint': 'الاسم الكامل',
       'phoneLabel': 'رقم الهاتف',
       'phoneHint': 'الهاتف',
       'emailLabel': 'البريد الإلكتروني',
@@ -1364,6 +1388,14 @@ class AppLocalizations {
       'flRemoveSuccess': 'تمت إزالة الصديق بنجاح',
       'flRemoveError': 'فشل في إزالة الصديق',
       'flMyFriends': 'صديق',
+      // Meeting Location
+      'cdMeetingLocation': 'مكان الاجتماع',
+      'cdMeetingLocationHint': 'اضغط لتحديد مكان الاجتماع',
+      'cdOpenInMaps': 'فتح في خرائط Google',
+      'cdNoLocationSet': 'لم يتم تحديد مكان',
+      'cdSearchLocation': 'ابحث عن عنوان…',
+      'cdLocationSelected': 'تم اختيار الموقع',
+      'cdLocationError': 'تعذر تحميل المواقع. حاول مرة أخرى.',
     },
   };
 
@@ -1741,6 +1773,15 @@ class AppLocalizations {
   String get flRemoveSuccess => _t('flRemoveSuccess');
   String get flRemoveError => _t('flRemoveError');
   String get flMyFriends => _t('flMyFriends');
+
+  // Meeting Location
+  String get cdMeetingLocation => _t('cdMeetingLocation');
+  String get cdMeetingLocationHint => _t('cdMeetingLocationHint');
+  String get cdOpenInMaps => _t('cdOpenInMaps');
+  String get cdNoLocationSet => _t('cdNoLocationSet');
+  String get cdSearchLocation => _t('cdSearchLocation');
+  String get cdLocationSelected => _t('cdLocationSelected');
+  String get cdLocationError => _t('cdLocationError');
 
   // Dynamic enum translation
   String translateStatus(String status) {

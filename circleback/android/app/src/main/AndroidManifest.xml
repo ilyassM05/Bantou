@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <!-- Gallery access on Android 12 and below -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <!-- Network access: Required for Map tiles and Address Search -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Bantou"
         android:name="${applicationName}"
@@ -75,9 +77,26 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- Required by url_launcher for text processing -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Required by url_launcher to open Google Maps and web URLs -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <!-- geo: scheme — opens any installed maps app (most reliable) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <!-- Explicit Google Maps package visibility -->
+        <package android:name="com.google.android.apps.maps" />
     </queries>
 </manifest>

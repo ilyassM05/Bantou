@@ -6,7 +6,6 @@ import '../../models/conversation.dart';
 import '../../services/messaging_service.dart';
 import '../../theme/app_colors.dart';
 import 'chat_screen.dart';
-import 'invitations_screen.dart';
 import 'new_group_screen.dart';
 import '../posts/friend_requests_screen.dart';
 import '../posts/friend_list_screen.dart';
@@ -25,9 +24,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
   List<dynamic> _friends = [];
   bool _loading = true;
   String _searchQuery = '';
-  int _pendingInvitations = 0;
+  int _pendingFriendRequests = 0;
   StreamSubscription? _notifSub;
-  StreamSubscription? _invSub;
 
   @override
   void initState() {
@@ -35,28 +33,24 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _load();
     MessagingService.instance.connect();
     _notifSub = MessagingService.instance.onNotification.listen((_) => _load());
-    _invSub = MessagingService.instance.onInvitation.listen((_) {
-      setState(() => _pendingInvitations++);
-    });
   }
 
   @override
   void dispose() {
     _notifSub?.cancel();
-    _invSub?.cancel();
     super.dispose();
   }
 
   Future<void> _load() async {
     try {
       final convs = await MessagingService.instance.getConversations();
-      final invs = await MessagingService.instance.getInvitations();
       final friends = await PostService().getFriends();
+      final pendingRequests = await PostService().getPendingFriendRequests();
       if (mounted) {
         setState(() {
           _conversations = convs;
           _friends = friends;
-          _pendingInvitations = invs.length;
+          _pendingFriendRequests = pendingRequests.length;
           _loading = false;
         });
       }
@@ -67,26 +61,26 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   List<Conversation> get _filtered {
     if (_searchQuery.isEmpty) return _conversations;
-    
+
     final query = _searchQuery.toLowerCase();
-    
+
     // Existing conversations matching query
     final matchingConvs = _conversations
         .where((c) => c.name.toLowerCase().contains(query))
         .toList();
-        
+
     // Friends matching query who do NOT already have a private conversation
     final matchingFriends = _friends.where((f) {
       final name = (f['name'] as String? ?? '').toLowerCase();
       if (!name.contains(query)) return false;
-      
+
       final friendId = f['id'] as int;
-      final hasConversation = _conversations.any((c) => 
+      final hasConversation = _conversations.any((c) =>
         c.type == 'private' && c.otherUserId == friendId
       );
       return !hasConversation;
     }).map((f) => Conversation(
-      id: 0, // 0 indicates a dummy conversation for a friend
+      id: 0,
       type: 'private',
       name: f['name'] ?? 'Unknown',
       imageUrl: f['profile_picture'],
@@ -95,7 +89,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       unreadCount: 0,
       otherUserId: f['id'],
     )).toList();
-    
+
     return [...matchingConvs, ...matchingFriends];
   }
 
@@ -109,7 +103,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
       body: Column(
         children: [
           _buildHeader(l10n),
-          if (_pendingInvitations > 0) _buildInvitationsBanner(l10n),
           _buildSearchBar(l10n),
           Expanded(child: _loading ? _buildLoader() : _buildList(l10n)),
         ],
@@ -131,10 +124,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Widget _buildHeader(AppLocalizations l10n) {
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 12,
+        top: MediaQuery.of(context).padding.top + 14,
         left: 20,
         right: 20,
-        bottom: 16,
+        bottom: 18,
       ),
       decoration: BoxDecoration(
         color: AppColors.cardSurface,
@@ -149,15 +142,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [AppColors.primary, AppColors.primaryDark],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+            child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
           Text(
@@ -169,6 +162,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
           ),
           const Spacer(),
+          // Unread messages chip
           if (_totalUnread > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -182,22 +176,58 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
               ),
             ),
-          const SizedBox(width: 8),
-          // Friend Requests button
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.person_add_outlined, color: AppColors.primary, size: 22),
-              tooltip: l10n.frTitle,
-              onPressed: () {
-                Navigator.pushNamed(context, FriendRequestsScreen.routeName);
-              },
-            ),
+          const SizedBox(width: 10),
+          // Friend Requests button with live notification badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.person_add_outlined,
+                      color: AppColors.primary, size: 22),
+                  tooltip: l10n.frTitle,
+                  onPressed: () async {
+                    await Navigator.pushNamed(
+                        context, FriendRequestsScreen.routeName);
+                    _load(); // Refresh badge after returning
+                  },
+                ),
+              ),
+              if (_pendingFriendRequests > 0)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(minWidth: 18, minHeight: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _pendingFriendRequests > 99
+                            ? '99+'
+                            : '$_pendingFriendRequests',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           // Friends List button
           Container(
             decoration: BoxDecoration(
@@ -205,7 +235,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.people_rounded, color: AppColors.primary, size: 22),
+              icon: const Icon(Icons.people_rounded,
+                  color: AppColors.primary, size: 22),
               tooltip: l10n.flTitle,
               onPressed: () {
                 Navigator.pushNamed(context, FriendListScreen.routeName);
@@ -217,71 +248,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 
-  Widget _buildInvitationsBanner(AppLocalizations l10n) {
-    return GestureDetector(
-      onTap: () async {
-        await Navigator.pushNamed(context, FriendRequestsScreen.routeName);
-        _load();
-      },
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withValues(alpha: 0.15),
-              AppColors.primaryLight.withValues(alpha: 0.1),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '$_pendingInvitations',
-                  style: GoogleFonts.inter(
-                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.msNewFriendRequests,
-                    style: GoogleFonts.inter(
-                        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    l10n.msTapToView,
-                    style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: AppColors.primary),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSearchBar(AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.cardSurface,
@@ -301,7 +270,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
           decoration: InputDecoration(
             hintText: l10n.msSearchHint,
             hintStyle: GoogleFonts.inter(color: AppColors.textHint),
-            prefixIcon: Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
+            prefixIcon: Icon(Icons.search_rounded,
+                color: AppColors.textSecondary, size: 20),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
@@ -322,18 +292,23 @@ class _MessagesScreenState extends State<MessagesScreen> {
           children: [
             Icon(Icons.chat_bubble_outline_rounded,
                 size: 64, color: AppColors.primary.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              _searchQuery.isEmpty ? l10n.msNoConversations : l10n.msNoResults,
+              _searchQuery.isEmpty
+                  ? l10n.msNoConversations
+                  : l10n.msNoResults,
               style: GoogleFonts.inter(
-                  fontSize: 16, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500),
             ),
             if (_searchQuery.isEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 l10n.msStartHint,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 13, color: AppColors.textHint),
+                style:
+                    GoogleFonts.inter(fontSize: 13, color: AppColors.textHint),
               ),
             ],
           ],
@@ -345,23 +320,24 @@ class _MessagesScreenState extends State<MessagesScreen> {
       color: AppColors.primary,
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
         itemCount: _filtered.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (_, i) => _ConversationTile(
           conversation: _filtered[i],
           currentUserId: _currentUserId(),
           onTap: () async {
             if (_filtered[i].id == 0 && _filtered[i].otherUserId != null) {
-              // It's a friend search result, fetch or create actual conversation
               try {
-                // Show a brief loading indicator dialog if needed, or just block await
-                final conv = await MessagingService.instance.getOrCreateDirectConversation(_filtered[i].otherUserId!);
+                final conv = await MessagingService.instance
+                    .getOrCreateDirectConversation(_filtered[i].otherUserId!);
                 if (!mounted) return;
-                await Navigator.pushNamed(context, ChatScreen.routeName, arguments: conv);
+                await Navigator.pushNamed(context, ChatScreen.routeName,
+                    arguments: conv);
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not start chat: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not start chat: $e')));
                 return;
               }
             } else {
@@ -379,8 +355,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   int _currentUserId() {
-    // Parse from HttpAuthService stored user
-    return 0; // Will be overridden by auth token in the backend
+    return 0;
   }
 }
 
@@ -524,13 +499,19 @@ class _ConversationTile extends StatelessWidget {
     }
     // Private: initials avatar
     final initials = conversation.name.trim().isNotEmpty
-        ? conversation.name.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase()
+        ? conversation.name
+            .trim()
+            .split(' ')
+            .map((w) => w[0])
+            .take(2)
+            .join()
+            .toUpperCase()
         : '?';
     return Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

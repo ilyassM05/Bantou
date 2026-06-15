@@ -17,13 +17,16 @@ const Circle = {
             vice_responsible,
             meeting_planning,
             visibility_type = 'Public',
-            status = 'Active'
+            status = 'Active',
+            meeting_lat = null,
+            meeting_lng = null,
+            meeting_address = null
         } = data;
 
         const [result] = await db.query(
             `INSERT INTO circles 
-             (association_id, created_by, name, description, country, city, responsible, vice_responsible, meeting_planning, visibility_type, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (association_id, created_by, name, description, country, city, responsible, vice_responsible, meeting_planning, visibility_type, status, meeting_lat, meeting_lng, meeting_address)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 association_id,
                 created_by,
@@ -35,7 +38,10 @@ const Circle = {
                 vice_responsible,
                 meeting_planning,
                 visibility_type,
-                status
+                status,
+                meeting_lat,
+                meeting_lng,
+                meeting_address
             ]
         );
         return result.insertId;
@@ -67,7 +73,10 @@ const Circle = {
             vice_responsible,
             meeting_planning,
             visibility_type,
-            status
+            status,
+            meeting_lat,
+            meeting_lng,
+            meeting_address
         } = data;
 
         await db.query(
@@ -80,7 +89,10 @@ const Circle = {
                  vice_responsible = COALESCE(?, vice_responsible), 
                  meeting_planning = COALESCE(?, meeting_planning), 
                  visibility_type = COALESCE(?, visibility_type),
-                 status = COALESCE(?, status)
+                 status = COALESCE(?, status),
+                 meeting_lat = ?,
+                 meeting_lng = ?,
+                 meeting_address = ?
              WHERE id = ?`,
             [
                 name,
@@ -92,6 +104,9 @@ const Circle = {
                 meeting_planning,
                 visibility_type,
                 status,
+                meeting_lat !== undefined ? meeting_lat : null,
+                meeting_lng !== undefined ? meeting_lng : null,
+                meeting_address !== undefined ? meeting_address : null,
                 id
             ]
         );

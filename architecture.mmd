@@ -1,0 +1,35 @@
+graph TD
+    %% Styling
+    classDef frontend fill:#E3F2FD,stroke:#1565C0,stroke-width:2px;
+    classDef backend fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px;
+    classDef database fill:#FFF3E0,stroke:#E65100,stroke-width:2px;
+    classDef ext fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px;
+
+    %% Components
+    subgraph Client ["Client Mobile (Frontend)"]
+        F1("Flutter App\n(Dart, Material Design)"):::frontend
+    end
+
+    subgraph Serveur ["Serveur (Backend)"]
+        B1("API RESTful\n(Node.js, Express.js)"):::backend
+        B2("Serveur Temps Réel\n(Socket.io)"):::backend
+        B3("Stockage Local\n(Multer)"):::backend
+        B4("Auth & Sécurité\n(JWT, Bcrypt)"):::backend
+    end
+
+    subgraph BDD ["Base de Données"]
+        D1[("MySQL\n(Relationnelle)")]:::database
+    end
+
+    subgraph Externes ["Services Externes"]
+        E1("Google Auth"):::ext
+    end
+
+    %% Relations
+    F1 <-->|"Requêtes HTTP/REST\n(CRUD)"| B1
+    F1 <-->|"WebSocket\n(Messagerie)"| B2
+    B1 -->|"Stockage Fichiers"| B3
+    B1 -->|"Validation"| B4
+    B1 <-->|"Requêtes SQL\n(mysql2)"| D1
+    B2 <-->|"Requêtes SQL"| D1
+    B4 -.->|"Validation OAuth"| E1

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../models/meeting_schedule.dart';
 import '../../theme/app_colors.dart';
 import '../../services/circle_service.dart';
 import '../../services/http_auth_service.dart';
@@ -260,7 +261,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                                       responsibleName: circle['responsible'] ?? '',
                                       viceResponsibleName: circle['viceResponsible'] ?? '',
                                       meetingDate: formattedDate,
-                                      meetingTime: circle['meetingPlanning'] ?? 'TBD',
+                                      meetingTime: MeetingTimeFormatter.format(circle['meetingPlanning'] as String?),
                                       status: circle['status'] ?? AppLocalizations.of(context).cdActive,
                                       accessStatus: circle['accessStatus'] ?? 'Owner',
                                       visibilityType: circle['visibilityType'] ?? 'Public',
@@ -584,7 +585,7 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
                            formattedDate = DateFormat('MMM d, yyyy').format(dt);
                         } catch (_) {}
                       }
-                      final time = circle['meetingPlanning'] ?? 'TBD';
+                      final time = MeetingTimeFormatter.format(circle['meetingPlanning'] as String?);
                       final responsible = circle['responsible'] ?? 'Unknown';
                       final viceResponsible = circle['viceResponsible'] ?? 'Unknown';
 
@@ -714,18 +715,6 @@ class _CircleDashboardScreenState extends State<CircleDashboardScreen> {
               ),
             ),
           ),
-        TextButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.map_outlined, size: 16, color: AppColors.primary),
-          label: Text(
-            AppLocalizations.of(context).cdViewMap,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
       ],
     );
   }

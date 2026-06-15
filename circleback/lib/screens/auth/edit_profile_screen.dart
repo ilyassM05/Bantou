@@ -31,6 +31,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   // Profile Setup fields
   final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _companyCtrl = TextEditingController();
   final _jobTitleCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
@@ -109,6 +111,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         setState(() {
           // Profile Setup Fields
           _nameCtrl.text = data['name'] ?? '';
+          _emailCtrl.text = data['email'] ?? HttpAuthService.currentUser?['email'] ?? '';
+          _phoneCtrl.text = data['phone'] ?? '';
           _companyCtrl.text = data['company'] ?? '';
           _jobTitleCtrl.text = data['jobTitle'] ?? '';
           _cityCtrl.text = data['city'] ?? '';
@@ -142,11 +146,17 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   @override
   void dispose() {
     _animCtrl.dispose();
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _companyCtrl.dispose();
     _jobTitleCtrl.dispose();
     _cityCtrl.dispose();
     _bioCtrl.dispose();
     _websiteCtrl.dispose();
+    _currentPwdCtrl.dispose();
+    _newPwdCtrl.dispose();
+    _confirmPwdCtrl.dispose();
     super.dispose();
   }
 
@@ -256,6 +266,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       // 1. Save Profile
       final profileSuccess = await HttpAuthService().updateProfile({
         'name': _nameCtrl.text,
+        'phone': _phoneCtrl.text,
         'company': _companyCtrl.text,
         'jobTitle': _jobTitleCtrl.text,
         'communityRole': _selectedRole ?? 'Member',
@@ -420,22 +431,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                             ),
                           ),
                           const SizedBox(height: 28),
-
-                          FadeTransition(
-                            opacity: _fadeAnim,
-                            child: SlideTransition(
-                              position: _slideAnim,
-                              child: _buildAvatarSection(l),
-                            ),
-                          ),
-                          const SizedBox(height: 28),
+                          // ── Personal Informations ──
                           FadeTransition(
                             opacity: _fadeAnim,
                             child: SlideTransition(
                               position: _slideAnim,
                               child: _buildCard(
-                                icon: Icons.business_center_outlined,
-                                title: l.psProfInfoTitle,
+                                icon: Icons.person_outline_rounded,
+                                title: 'Personal Informations',
                                 iconColor: const Color(0xFF818CF8),
                                 children: [
                                   AuthTextField(
@@ -445,6 +448,37 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                     controller: _nameCtrl,
                                   ),
                                   const SizedBox(height: 16),
+                                  AuthTextField(
+                                    label: 'Email Address',
+                                    hint: 'Your email address',
+                                    icon: Icons.email_outlined,
+                                    controller: _emailCtrl,
+                                    keyboardType: TextInputType.emailAddress,
+                                    enabled: false,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthTextField(
+                                    label: 'Phone Number',
+                                    hint: 'Your phone number',
+                                    icon: Icons.phone_outlined,
+                                    controller: _phoneCtrl,
+                                    keyboardType: TextInputType.phone,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // ── About Your Company ──
+                          FadeTransition(
+                            opacity: _fadeAnim,
+                            child: SlideTransition(
+                              position: _slideAnim,
+                              child: _buildCard(
+                                icon: Icons.business_center_outlined,
+                                title: 'About Your Company',
+                                iconColor: const Color(0xFF34D399),
+                                children: [
                                   AuthTextField(
                                     label: l.psCompanyLabel,
                                     hint: l.psCompanyHint,
@@ -459,12 +493,42 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                     controller: _jobTitleCtrl,
                                   ),
                                   const SizedBox(height: 16),
-                                  _buildRoleDropdown(l),
+                                  AuthTextField(
+                                    label: l.psCityLabel,
+                                    hint: l.psCityHint,
+                                    icon: Icons.location_on_outlined,
+                                    controller: _cityCtrl,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildBioField(l),
                                 ],
                               ),
                             ),
                           ),
                           const SizedBox(height: 16),
+                          // ── Online Presence ──
+                          FadeTransition(
+                            opacity: _fadeAnim,
+                            child: SlideTransition(
+                              position: _slideAnim,
+                              child: _buildCard(
+                                icon: Icons.link_rounded,
+                                title: l.psOnlineTitle,
+                                iconColor: const Color(0xFFFBBF24),
+                                children: [
+                                  AuthTextField(
+                                    label: l.psWebLabel,
+                                    hint: l.psWebHint,
+                                    icon: Icons.language_outlined,
+                                    controller: _websiteCtrl,
+                                    keyboardType: TextInputType.url,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // ── Password & Security ──
                           FadeTransition(
                             opacity: _fadeAnim,
                             child: SlideTransition(
@@ -516,50 +580,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          FadeTransition(
-                            opacity: _fadeAnim,
-                            child: SlideTransition(
-                              position: _slideAnim,
-                              child: _buildCard(
-                                icon: Icons.person_outline_rounded,
-                                title: l.psAboutTitle,
-                                iconColor: const Color(0xFF34D399),
-                                children: [
-                                  AuthTextField(
-                                    label: l.psCityLabel,
-                                    hint: l.psCityHint,
-                                    icon: Icons.location_on_outlined,
-                                    controller: _cityCtrl,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildBioField(l),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FadeTransition(
-                            opacity: _fadeAnim,
-                            child: SlideTransition(
-                              position: _slideAnim,
-                              child: _buildCard(
-                                icon: Icons.link_rounded,
-                                title: l.psOnlineTitle,
-                                iconColor: const Color(0xFFFBBF24),
-                                children: [
-                                  AuthTextField(
-                                    label: l.psWebLabel,
-                                    hint: l.psWebHint,
-                                    icon: Icons.language_outlined,
-                                    controller: _websiteCtrl,
-                                    keyboardType: TextInputType.url,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                           const SizedBox(height: 32),
+                          // ── Save Changes ──
                           FadeTransition(
                             opacity: _fadeAnim,
                             child: SlideTransition(

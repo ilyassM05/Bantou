@@ -23,7 +23,7 @@ import 'screens/circles/member_circles_screen.dart';
 import 'screens/messaging/messages_screen.dart';
 import 'screens/messaging/chat_screen.dart';
 import 'screens/messaging/new_group_screen.dart';
-import 'screens/messaging/invitations_screen.dart';
+
 import 'screens/messaging/group_info_screen.dart';
 import 'screens/posts/friend_requests_screen.dart';
 import 'screens/posts/friend_list_screen.dart';
@@ -175,7 +175,7 @@ class _BantouAppState extends State<BantouApp> {
           MessagesScreen.routeName: (_) => const MessagesScreen(),
           ChatScreen.routeName: (_) => const ChatScreen(),
           NewGroupScreen.routeName: (_) => const NewGroupScreen(),
-          InvitationsScreen.routeName: (_) => const InvitationsScreen(),
+
           GroupInfoScreen.routeName: (_) => const GroupInfoScreen(),
           FriendRequestsScreen.routeName: (_) => const FriendRequestsScreen(),
           FriendListScreen.routeName: (_) => const FriendListScreen(),

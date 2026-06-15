@@ -9,6 +9,10 @@ import '../../widgets/user_avatar.dart';
 import '../../services/circle_service.dart';
 import '../../services/http_auth_service.dart';
 import '../../widgets/add_friend_button.dart';
+import '../../widgets/location_picker_field.dart';
+import '../../widgets/meeting_location_card.dart';
+import '../../models/location_data.dart';
+import '../../models/meeting_schedule.dart';
 import '../posts/user_profile_screen.dart';
 
 /// Screen representing the details of a specific Circle.
@@ -241,39 +245,29 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeaderInfo(context),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             _buildLeadershipSection(),
-            const SizedBox(height: 32),
-            _buildMeetingsSection(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             _buildPhotosSection(),
             // ── Admin/SA: existing Manage Participants ────────────
             if (HttpAuthService.currentUserRole == 'SA' || 
                 HttpAuthService.currentUserRole == 'admin' || 
                 HttpAuthService.currentIsInvitedAdmin ||
                 _circleData?['isAdmin'] == true) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               _buildParticipantsSection(),
             ],
             // ── Member: read-only Participants section ───────────
             if (!_isAdminUser) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               _buildMemberParticipantsSection(),
             ],
-            const SizedBox(height: 32),
-            // Grey box at the bottom as seen in mockup
-            Container(
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -325,71 +319,275 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     }
   }
 
+  /// Returns true when the circle has a saved meeting location.
+  bool _hasMeetingLocation() {
+    final lat = _circleData?['meetingLat'];
+    final lng = _circleData?['meetingLng'];
+    return lat != null && lng != null;
+  }
+
   Widget _buildHeaderInfo(BuildContext context) {
     final title = _circleData?['name'] ?? AppLocalizations.of(context).cdUnknownCircle;
-    final location = '${_circleData?['city'] ?? ''}, ${_circleData?['country'] ?? ''}'.trim();
+    final cityCountry = '${_circleData?['city'] ?? ''}, ${_circleData?['country'] ?? ''}'.trim().replaceAll(RegExp(r'^,\s*|,\s*$'), '');
     final status = _circleData?['status'] ?? AppLocalizations.of(context).cdActive;
     final isActive = status.toLowerCase() == 'active' || status.toLowerCase() == 'actif' || status.toLowerCase() == 'activo' || status == AppLocalizations.of(context).cdActive;
+    final meetingPlanning = _circleData?['meetingPlanning'] as String?;
+    final formattedSchedule = meetingPlanning != null && meetingPlanning.isNotEmpty
+        ? MeetingTimeFormatter.format(meetingPlanning)
+        : null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryDark,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderSoft.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Title + status badge ─────────────────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark,
+                    height: 1.25,
+                  ),
                 ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? const Color(0xFF00BFA5).withValues(alpha: 0.12)
+                      : const Color(0xFFF1F3F4),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isActive
+                        ? const Color(0xFF00BFA5).withValues(alpha: 0.4)
+                        : const Color(0xFFDADCE0),
+                  ),
+                ),
+                child: Text(
+                  status,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isActive ? const Color(0xFF00897B) : const Color(0xFF5F6368),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // ── City / Country info row ──────────────────────────────────────
+          if (cityCountry.isNotEmpty && cityCountry != ',') ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.apartment_rounded, size: 13, color: AppColors.primary),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  cityCountry,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // ── Meeting schedule info ────────────────────────────────────────
+          if (formattedSchedule != null && formattedSchedule.isNotEmpty && formattedSchedule != 'TBD') ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.schedule_rounded, size: 13, color: AppColors.primary),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    formattedSchedule,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // ── Description ─────────────────────────────────────────────────
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF5ECD8)),
+          const SizedBox(height: 14),
+          Text(
+            _circleData?['description'] ?? AppLocalizations.of(context).cdNoDescriptionProvided,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              height: 1.6,
+              color: AppColors.textSecondary,
+            ),
+          ),
+
+          // ── Interactive Meeting Location chip ────────────────────────────
+          if (_hasMeetingLocation()) ...[
+            const SizedBox(height: 16),
+            _buildMapChip(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// A tappable map chip that opens Google Maps when pressed.
+  Widget _buildMapChip(BuildContext context) {
+    final address = _circleData?['meetingAddress'] as String? ?? '';
+    final lat = (_circleData!['meetingLat'] as num).toDouble();
+    final lng = (_circleData!['meetingLng'] as num).toDouble();
+    final location = LocationData(lat: lat, lng: lng, address: address);
+
+    return GestureDetector(
+      onTap: () {
+        // Open using the MeetingLocationCard logic via bottom sheet
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _MapBottomSheet(location: location),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withValues(alpha: 0.08),
+              AppColors.primary.withValues(alpha: 0.04),
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Map pin icon with pulsing indicator
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context).cdMeetingLocation,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    address.isNotEmpty ? address : '${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF00BFA5) : const Color(0xFFF1F3F4), // Teal color
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                status,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? Colors.white : const Color(0xFF5F6368),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(Icons.location_on, size: 14, color: AppColors.primary),
-            const SizedBox(width: 4),
-            Text(
-              location,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.map_rounded, color: Colors.white, size: 13),
+                  const SizedBox(width: 4),
+                  Text(
+                    'View',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          _circleData?['description'] ?? AppLocalizations.of(context).cdNoDescriptionProvided,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            height: 1.5,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -400,22 +598,18 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          AppLocalizations.of(context).cdCircleLeadership,
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryDark,
-          ),
+        _buildSectionHeader(
+          icon: Icons.star_rounded,
+          label: AppLocalizations.of(context).cdCircleLeadership,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
               child: _buildLeaderCard(
                 name: responsible,
                 role: AppLocalizations.of(context).cdResponsibleSmall,
-                color: const Color(0xFF2962FF), // Blue
+                color: const Color(0xFF2962FF),
               ),
             ),
             const SizedBox(width: 12),
@@ -423,10 +617,35 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
               child: _buildLeaderCard(
                 name: viceResponsible,
                 role: AppLocalizations.of(context).cdViceResponsibleSmall,
-                color: const Color(0xFFFF9100), // Orange
+                color: const Color(0xFFFF9100),
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  /// Reusable section header with icon accent.
+  Widget _buildSectionHeader({required IconData icon, required String label}) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 15, color: AppColors.primary),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primaryDark,
+          ),
         ),
       ],
     );
@@ -437,185 +656,96 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     required String role,
     required Color color,
   }) {
-    final initials = name.split(' ').map((e) => e[0]).take(2).join();
+    final nameParts = name.trim().split(' ');
+    final initials = nameParts.length >= 2
+        ? '${nameParts.first[0]}${nameParts.last[0]}'
+        : (name.isNotEmpty ? name[0] : '?');
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  name,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
+        border: Border.all(color: AppColors.borderSoft.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMeetingsSection() {
-    final meetingTime = _circleData?['meetingPlanning'] ?? 'TBD';
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              AppLocalizations.of(context).cdUpcomingMeetings,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                AppLocalizations.of(context).cdViewCalendar,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4285F4),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildMeetingCard(
-          month: 'TBD',
-          day: '??',
-          title: AppLocalizations.of(context).cdNextSync,
-          time: meetingTime,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMeetingCard({
-    required String month,
-    required String day,
-    required String title,
-    required String time,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderSoft),
-      ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.gradientStart,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  month,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4285F4),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ),
-                Text(
-                  day,
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 12, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      time,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-              ],
+                alignment: Alignment.center,
+                child: Text(
+                  initials.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            role.toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: 0.8,
             ),
           ),
-          const Icon(
-            Icons.chevron_right,
-            color: AppColors.textSecondary,
+          const SizedBox(height: 3),
+          Text(
+            name,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              height: 1.3,
+            ),
           ),
         ],
       ),
     );
   }
+
+
 
   Widget _buildPhotosSection() {
     final pendingPhotos = _photos.where((p) => p['status'] == 'pending').toList();
@@ -629,13 +759,9 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              AppLocalizations.of(context).cdMeetingGallery,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-              ),
+            _buildSectionHeader(
+              icon: Icons.photo_library_rounded,
+              label: AppLocalizations.of(context).cdMeetingGallery,
             ),
             if (_isUploadingPhoto)
               const SizedBox(
@@ -644,20 +770,32 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              TextButton.icon(
-                onPressed: _showPhotoSourceSheet,
-                icon: const Icon(Icons.camera_alt, size: 16, color: Color(0xFF4285F4)),
-                label: Text(
-                  AppLocalizations.of(context).cdAddPhoto,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: const Color(0xFF4285F4),
+              GestureDetector(
+                onTap: _showPhotoSourceSheet,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF4285F4).withValues(alpha: 0.3),
+                    ),
                   ),
-                ),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add_a_photo_rounded, size: 14, color: Color(0xFF4285F4)),
+                      const SizedBox(width: 5),
+                      Text(
+                        AppLocalizations.of(context).cdAddPhoto,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4285F4),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -1035,16 +1173,12 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              AppLocalizations.of(context).cdCircleParticipants,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-              ),
+            _buildSectionHeader(
+              icon: Icons.people_alt_rounded,
+              label: AppLocalizations.of(context).cdCircleParticipants,
             ),
-            TextButton(
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
@@ -1052,16 +1186,22 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                   builder: (ctx) => _CircleParticipantsModal(circleId: _circleData!['id'] as int),
                 );
               },
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                AppLocalizations.of(context).cdViewAll,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4285F4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF4285F4).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  AppLocalizations.of(context).cdViewAll,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF4285F4),
+                  ),
                 ),
               ),
             ),
@@ -1139,21 +1279,11 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.people_outline, color: AppColors.primary, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              AppLocalizations.of(context).cdParticipantsTitle,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-              ),
-            ),
-          ],
+        _buildSectionHeader(
+          icon: Icons.people_outline_rounded,
+          label: AppLocalizations.of(context).cdParticipantsTitle,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         _MemberParticipantsList(circleId: circleId),
       ],
     );
@@ -1169,6 +1299,15 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     final viceRespCtrl = TextEditingController(text: _circleData?['viceResponsible'] ?? _circleData?['vice_responsible']);
     final meetCtrl = TextEditingController(text: _circleData?['meetingPlanning'] ?? _circleData?['meeting_planning']);
     bool isLoading = false;
+
+    // Pre-fill existing location if available
+    LocationData? editLocation = _hasMeetingLocation()
+        ? LocationData(
+            lat: (_circleData!['meetingLat'] as num).toDouble(),
+            lng: (_circleData!['meetingLng'] as num).toDouble(),
+            address: _circleData!['meetingAddress'] as String? ?? '',
+          )
+        : null;
 
     showModalBottomSheet(
       context: context,
@@ -1270,6 +1409,34 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                         validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                       ),
                       const SizedBox(height: 24),
+                      // ── Meeting Location ─────────────────────────────
+                      Text(
+                        AppLocalizations.of(context).cdMeetingLocation,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryDark,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        height: 1.5,
+                        width: 40,
+                        color: AppColors.primary,
+                        margin: const EdgeInsets.only(bottom: 12),
+                      ),
+                      StatefulBuilder(
+                        builder: (_, setLocState) {
+                          return LocationPickerField(
+                            selectedLocation: editLocation,
+                            onLocationSelected: (loc) {
+                              setLocState(() => editLocation = loc);
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -1293,6 +1460,10 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                                 responsible: respCtrl.text.trim(),
                                 viceResponsible: viceRespCtrl.text.trim(),
                                 meetingPlanning: meetCtrl.text.trim(),
+                                meetingLat: editLocation?.lat,
+                                meetingLng: editLocation?.lng,
+                                meetingAddress: editLocation?.address,
+                                clearLocation: editLocation == null && _hasMeetingLocation(),
                               );
                               if (context.mounted) {
                                 Navigator.pop(context);
@@ -1304,6 +1475,9 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                                   _circleData!['responsible'] = respCtrl.text.trim();
                                   _circleData!['viceResponsible'] = viceRespCtrl.text.trim();
                                   _circleData!['meetingPlanning'] = meetCtrl.text.trim();
+                                  _circleData!['meetingLat'] = editLocation?.lat;
+                                  _circleData!['meetingLng'] = editLocation?.lng;
+                                  _circleData!['meetingAddress'] = editLocation?.address;
                                 });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text(AppLocalizations.of(context).cdCircleUpdatedSuccess), backgroundColor: AppColors.primary),
@@ -1332,6 +1506,77 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           },
         );
       },
+    );
+  }
+}
+
+/// Bottom sheet that wraps the MeetingLocationCard for the map chip tap interaction.
+class _MapBottomSheet extends StatelessWidget {
+  final LocationData location;
+  const _MapBottomSheet({required this.location});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.location_on_rounded, size: 16, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Meeting Location',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.pop(context),
+                color: AppColors.textSecondary,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          MeetingLocationCard(location: location),
+        ],
+      ),
     );
   }
 }
