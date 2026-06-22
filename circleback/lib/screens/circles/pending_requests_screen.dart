@@ -119,8 +119,26 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
 
   Widget _buildRequestCard(Map<String, dynamic> req) {
     final isAssociation = req['requestType'] == 'association';
-    final requestLabel = isAssociation ? 'Association Join Request' : 'Circle Access Request';
+    final isInvitation = req['requestType'] == 'invitation';
     
+    String requestLabel = 'Circle Access Request';
+    if (isAssociation) requestLabel = 'Association Join Request';
+    if (isInvitation) requestLabel = 'Member Invitation';
+    
+    Color labelColor = Colors.purple.shade50;
+    Color borderColor = Colors.purple.shade200;
+    Color textColor = Colors.purple.shade700;
+    
+    if (isAssociation) {
+      labelColor = Colors.blue.shade50;
+      borderColor = Colors.blue.shade200;
+      textColor = Colors.blue.shade700;
+    } else if (isInvitation) {
+      labelColor = const Color(0xFFC9A84C).withValues(alpha: 0.1);
+      borderColor = const Color(0xFFC9A84C).withValues(alpha: 0.3);
+      textColor = const Color(0xFFC9A84C);
+    }
+      
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -142,16 +160,16 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: isAssociation ? Colors.blue.shade50 : Colors.purple.shade50,
+              color: labelColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isAssociation ? Colors.blue.shade200 : Colors.purple.shade200),
+              border: Border.all(color: borderColor),
             ),
             child: Text(
               requestLabel,
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isAssociation ? Colors.blue.shade700 : Colors.purple.shade700,
+                color: textColor,
               ),
             ),
           ),
@@ -174,22 +192,49 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
               ),
             ),
           ] else ...[
-             Text(
-              'Circle: ${req['circle_name'] ?? 'Unknown'}',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: AppColors.textPrimary,
+            if (isInvitation) ...[
+               Text(
+                'Invited Email: ${req['user_email'] ?? ''}',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-             Text(
-              '${AppLocalizations.of(context).prAdmin}: ${req['user_name'] ?? 'Unknown'} (${req['user_email'] ?? ''})',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
+              const SizedBox(height: 8),
+               Text(
+                'Invited by: ${req['inviter_name'] ?? 'Unknown'}',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
+              if ((req['circle_name'] ?? '').isNotEmpty)
+                Text(
+                  'Circle: ${req['circle_name']}',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF818CF8),
+                  ),
+                ),
+            ] else ...[
+               Text(
+                'Circle: ${req['circle_name'] ?? 'Unknown'}',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+               Text(
+                '${AppLocalizations.of(context).prAdmin}: ${req['user_name'] ?? 'Unknown'} (${req['user_email'] ?? ''})',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ],
           const SizedBox(height: 16),
           Row(

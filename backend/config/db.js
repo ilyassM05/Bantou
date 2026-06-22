@@ -325,7 +325,105 @@ bootstrap.connect((err) => {
                                                                                         bootstrap.query(alterMeetingLocation, (err) => {
                                                                                             if (err) console.error('Error adding meeting location columns:', err);
                                                                                             else console.log('✔  Meeting location columns ready.');
-                                                                                            bootstrap.end();
+
+                                                                                            // ── circle_members table ───────────────────────────────────
+                                                                                            const createCircleMembers = `
+                                                                                                CREATE TABLE IF NOT EXISTS circle_members (
+                                                                                                    id        INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                                    circle_id INT NOT NULL,
+                                                                                                    user_id   INT NOT NULL,
+                                                                                                    role      VARCHAR(50) DEFAULT 'member',
+                                                                                                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                                    UNIQUE KEY uq_cm (circle_id, user_id),
+                                                                                                    FOREIGN KEY (circle_id) REFERENCES circles(id) ON DELETE CASCADE,
+                                                                                                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                                                                                )
+                                                                                            `;
+                                                                                            bootstrap.query(createCircleMembers, (err) => {
+                                                                                                if (err) console.error('Error creating circle_members table:', err);
+                                                                                                else console.log('✔  Table `circle_members` ready.');
+
+                                                                                                // ── circle_access_requests table ────────────────────────
+                                                                                                const createCircleAccessRequests = `
+                                                                                                    CREATE TABLE IF NOT EXISTS circle_access_requests (
+                                                                                                        id         INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                                        circle_id  INT NOT NULL,
+                                                                                                        user_id    INT NOT NULL,
+                                                                                                        status     VARCHAR(50) DEFAULT 'Pending',
+                                                                                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                                                                                        UNIQUE KEY uq_car (circle_id, user_id),
+                                                                                                        FOREIGN KEY (circle_id) REFERENCES circles(id) ON DELETE CASCADE,
+                                                                                                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                                                                                    )
+                                                                                                `;
+                                                                                                bootstrap.query(createCircleAccessRequests, (err) => {
+                                                                                                    if (err) console.error('Error creating circle_access_requests table:', err);
+                                                                                                    else console.log('✔  Table `circle_access_requests` ready.');
+
+                                                                                                    // ── circle_photos table ─────────────────────────────────
+                                                                                                    const createCirclePhotos = `
+                                                                                                        CREATE TABLE IF NOT EXISTS circle_photos (
+                                                                                                            id        INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                                            circle_id INT NOT NULL,
+                                                                                                            user_id   INT NOT NULL,
+                                                                                                            photo_url VARCHAR(500) NOT NULL,
+                                                                                                            status    ENUM('pending','approved') DEFAULT 'approved',
+                                                                                                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                                            FOREIGN KEY (circle_id) REFERENCES circles(id) ON DELETE CASCADE,
+                                                                                                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                                                                                        )
+                                                                                                    `;
+                                                                                                    bootstrap.query(createCirclePhotos, (err) => {
+                                                                                                        if (err) console.error('Error creating circle_photos table:', err);
+                                                                                                        else console.log('✔  Table `circle_photos` ready.');
+
+                                                                                                        // ── member_invitations table ────────────────────────────
+                                                                                                        const createMemberInvitations = `
+                                                                                                            CREATE TABLE IF NOT EXISTS member_invitations (
+                                                                                                                id             INT AUTO_INCREMENT PRIMARY KEY,
+                                                                                                                association_id INT NOT NULL,
+                                                                                                                invited_by     INT NOT NULL,
+                                                                                                                invitee_email  VARCHAR(255) NOT NULL,
+                                                                                                                circle_id      INT DEFAULT NULL,
+                                                                                                                token          TEXT DEFAULT NULL,
+                                                                                                                status         ENUM('pending','accepted','rejected') DEFAULT 'pending',
+                                                                                                                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                                                                                FOREIGN KEY (association_id) REFERENCES associations(id) ON DELETE CASCADE,
+                                                                                                                FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE
+                                                                                                            )
+                                                                                                        `;
+                                                                                                        bootstrap.query(createMemberInvitations, (err) => {
+                                                                                                            if (err) console.error('Error creating member_invitations table:', err);
+                                                                                                            else console.log('✔  Table `member_invitations` ready.');
+
+                                                                                                            // ── users.privacy_level (migration) ─────────────────
+                                                                                                            const alterPrivacyLevel = `
+                                                                                                                ALTER TABLE users
+                                                                                                                ADD COLUMN IF NOT EXISTS privacy_level VARCHAR(50) DEFAULT 'public'
+                                                                                                            `;
+                                                                                                            bootstrap.query(alterPrivacyLevel, (err) => {
+                                                                                                                if (err) console.error('Error adding privacy_level column:', err);
+                                                                                                                else console.log('✔  users.privacy_level column ready.');
+
+                                                                                                                // ── posts migration columns ──────────────────────────
+                                                                                                                const alterPostsAssocId = `
+                                                                                                                    ALTER TABLE posts
+                                                                                                                    ADD COLUMN IF NOT EXISTS association_id INT NOT NULL DEFAULT 0,
+                                                                                                                    ADD COLUMN IF NOT EXISTS image_url      VARCHAR(500) DEFAULT NULL,
+                                                                                                                    ADD COLUMN IF NOT EXISTS likes_count    INT DEFAULT 0,
+                                                                                                                    ADD COLUMN IF NOT EXISTS comments_count INT DEFAULT 0
+                                                                                                                `;
+                                                                                                                bootstrap.query(alterPostsAssocId, (err) => {
+                                                                                                                    if (err) console.error('Error adding posts migration columns:', err);
+                                                                                                                    else console.log('✔  posts migration columns ready.');
+                                                                                                                    bootstrap.end();
+                                                                                                                });
+                                                                                                            });
+                                                                                                        });
+                                                                                                    });
+                                                                                                });
+                                                                                            });
                                                                                         });
                                                                                     });
                                                                                 });

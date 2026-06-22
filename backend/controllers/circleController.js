@@ -447,8 +447,27 @@ exports.getPendingRequests = async (req, res) => {
                  WHERE c.association_id = ? AND car.status = 'Pending'`,
                  [association.id]
             );
+            
+            // Pending Member Invitations - waiting for SA approval to send the email
+            const [invitations] = await db.query(
+                `SELECT mi.id, mi.invitee_email as user_email, mi.status, mi.created_at,
+                        u.name AS inviter_name, c.name as circle_name
+                 FROM member_invitations mi
+                 JOIN users u ON mi.invited_by = u.id
+                 LEFT JOIN circles c ON mi.circle_id = c.id
+                 WHERE mi.association_id = ? AND mi.status = 'pending' AND mi.token = ''`,
+                 [association.id]
+            );
+            
+            const invitationRequests = invitations.map(r => ({
+                ...r,
+                requestType: 'invitation',
+                user_name: 'Pending Invite'
+            }));
+
             pendingRequests = [
                 ...circleRequests.map(r => ({ ...r, requestType: 'circle' })),
+                ...invitationRequests,
                 ...pendingRequests,
             ];
         }
@@ -485,6 +504,42 @@ exports.respondToRequest = async (req, res) => {
         if (!association) return res.status(403).json({ error: 'No association found' });
 
         const db = require('../config/db');
+
+        if (requestType === 'invitation') {
+            if (role !== 'SA') {
+                return res.status(403).json({ error: 'Only Super Admins can respond to invitations.' });
+            }
+            
+            const [invRows] = await db.query('SELECT * FROM member_invitations WHERE id = ? AND association_id = ?', [requestId, association.id]);
+            const invitation = invRows[0];
+            if (!invitation) return res.status(404).json({ error: 'Invitation not found.' });
+
+            if (status === 'Rejected') {
+                await db.query('UPDATE member_invitations SET status=? WHERE id=?', ['rejected', requestId]);
+            } else if (status === 'Approved') {
+                const jwt = require('jsonwebtoken');
+                const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+                const inviteToken = jwt.sign(
+                    { email: invitation.invitee_email, associationId: association.id, purpose: 'member_invite', invitationId: invitation.id, inviterRole: 'member' },
+                    JWT_SECRET,
+                    { expiresIn: '7d' }
+                );
+                await db.query('UPDATE member_invitations SET token=?, status=? WHERE id=?', [inviteToken, 'pending', requestId]);
+
+                const [inviterRows] = await db.query('SELECT name FROM users WHERE id = ?', [invitation.invited_by]);
+                const inviterName = inviterRows[0]?.name || 'A Bantou User';
+                
+                let circleName = null;
+                if (invitation.circle_id) {
+                    const [crows] = await db.query('SELECT name FROM circles WHERE id=?', [invitation.circle_id]);
+                    circleName = crows[0]?.name || null;
+                }
+
+                const { sendMemberInvitationEmail } = require('../config/mailer');
+                await sendMemberInvitationEmail(invitation.invitee_email, inviterName, association.name, inviteToken, circleName);
+            }
+            return res.status(200).json({ message: 'Invitation request handled.' });
+        }
 
         if (requestType === 'association') {
             // For admins: verify this member's invitation is linked to a circle the admin created

@@ -606,25 +606,26 @@ exports.createAssociation = async (req, res, next) => {
         const existingAssoc = await Association.findByUserId(userId);
         if (existingAssoc && existingAssoc.admin_emails) {
             const oldAdmins = safeParse(existingAssoc.admin_emails);
-            console.log(`[ASSOC] Found existing assoc: "${existingAssoc.name}". Old admins:`, oldAdmins);
             newlyAddedEmails = cleanAdminEmails.filter(email => !oldAdmins.includes(email));
         } else {
-            // First time setting up association, all are new
-            console.log(`[ASSOC] No existing association found for userId: ${userId} (admins)`);
             newlyAddedEmails = [...cleanAdminEmails];
         }
-        console.log(`[ASSOC] Newly added admin emails to invite:`, newlyAddedEmails);
+
+        try {
+            fs.appendFileSync('debug.log', new Date().toISOString() + ' | ADMINS | old: ' + (existingAssoc ? existingAssoc.admin_emails : 'null') + ' | clean: ' + JSON.stringify(cleanAdminEmails) + ' | newly: ' + JSON.stringify(newlyAddedEmails) + '\n');
+        } catch(e) {}
 
         // Check for newly added members to send invitations
         if (existingAssoc && existingAssoc.member_emails) {
             const oldMembers = safeParse(existingAssoc.member_emails);
-            console.log(`[ASSOC] Found existing assoc: "${existingAssoc.name}". Old members:`, oldMembers);
             newlyAddedMemberEmails = cleanMemberEmails.filter(email => !oldMembers.includes(email));
         } else {
-            console.log(`[ASSOC] No existing association found for userId: ${userId} (members)`);
             newlyAddedMemberEmails = [...cleanMemberEmails];
         }
-        console.log(`[ASSOC] Newly added member emails to invite:`, newlyAddedMemberEmails);
+
+        try {
+            fs.appendFileSync('debug.log', new Date().toISOString() + ' | MEMBERS | old: ' + (existingAssoc ? existingAssoc.member_emails : 'null') + ' | clean: ' + JSON.stringify(cleanMemberEmails) + ' | newly: ' + JSON.stringify(newlyAddedMemberEmails) + '\n');
+        } catch(e) {}
 
         await Association.createOrUpdate(userId, {
             name,
@@ -671,26 +672,60 @@ exports.createAssociation = async (req, res, next) => {
             );
             generatedInviteTokens[email] = inviteToken;
             console.log(`[ASSOC] Sending admin invitation to: ${email} (Inviter: ${inviterName})`);
+            
+            try {
+                fs.appendFileSync('debug.log', new Date().toISOString() + ' | SENDING ADMIN EMAIL TO: ' + email + '\n');
+            } catch(e) {}
+
             await sendAdminInvitationEmail(email, inviterName, name, inviteToken).then(() => {
                 console.log(`[ASSOC] SUCCESS: Admin invitation sent to ${email}`);
+                try { fs.appendFileSync('debug.log', new Date().toISOString() + ' | SUCCESS ADMIN: ' + email + '\n'); } catch(e) {}
             }).catch(err => {
                 console.error(`[ASSOC] ERROR: Failed to send admin invitation to ${email}:`, err);
+                try { fs.appendFileSync('debug.log', new Date().toISOString() + ' | ERROR ADMIN: ' + email + ' | ' + err.message + '\n'); } catch(e) {}
             });
         }
 
         // Send invitations to newly added members asynchronously
         for (const email of newlyAddedMemberEmails) {
+            let invitationId = null;
+            if (newAssoc) {
+                const db = require('../config/db');
+                try {
+                    const [invRow] = await db.query(
+                        'INSERT INTO member_invitations (association_id, inviter_id, invitee_email, status) VALUES (?, ?, ?, ?)',
+                        [newAssoc.id, userId, email, 'pending']
+                    );
+                    invitationId = invRow.insertId;
+                } catch (e) {
+                    console.error(`[ASSOC] Failed to insert member_invitations record for ${email}:`, e);
+                }
+            }
+
             const inviteToken = jwt.sign(
-                { email, associationId: newAssoc ? newAssoc.id : null, purpose: 'member_invite' },
+                { email, associationId: newAssoc ? newAssoc.id : null, purpose: 'member_invite', invitationId },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+
+            if (invitationId) {
+                const db = require('../config/db');
+                await db.query('UPDATE member_invitations SET token=? WHERE id=?', [inviteToken, invitationId]).catch(console.error);
+            }
+
             generatedInviteTokens[email] = inviteToken;
             console.log(`[ASSOC] Sending member invitation to: ${email} (Inviter: ${inviterName})`);
+            
+            try {
+                fs.appendFileSync('debug.log', new Date().toISOString() + ' | SENDING MEMBER EMAIL TO: ' + email + '\n');
+            } catch(e) {}
+
             await sendMemberInvitationEmail(email, inviterName, name, inviteToken).then(() => {
                 console.log(`[ASSOC] SUCCESS: Member invitation sent to ${email}`);
+                try { fs.appendFileSync('debug.log', new Date().toISOString() + ' | SUCCESS MEMBER: ' + email + '\n'); } catch(e) {}
             }).catch(err => {
                 console.error(`[ASSOC] ERROR: Failed to send member invitation to ${email}:`, err);
+                try { fs.appendFileSync('debug.log', new Date().toISOString() + ' | ERROR MEMBER: ' + email + ' | ' + err.message + '\n'); } catch(e) {}
             });
         }
 
@@ -920,7 +955,7 @@ exports.inviteMember = async (req, res, next) => {
 
         const db = require('../config/db');
 
-        // Create invitation record + generate token + send email immediately for ALL allowlisted roles
+        // Create invitation record with empty token and status 'pending'
         const [invRow] = await db.query(
             `INSERT INTO member_invitations (association_id, invited_by, invitee_email, circle_id, token, status)
              VALUES (?, ?, ?, ?, '', 'pending')`,
@@ -928,6 +963,11 @@ exports.inviteMember = async (req, res, next) => {
         );
         const invitationId = invRow.insertId;
 
+        if (inviterRole !== 'SA') {
+            return res.status(200).json({ message: 'Member invitation requires SA approval.' });
+        }
+
+        // If SA, generate token + send email immediately
         const inviteToken = jwt.sign(
             { email: email.trim().toLowerCase(), associationId: assoc.id, purpose: 'member_invite', invitationId, inviterRole },
             JWT_SECRET,

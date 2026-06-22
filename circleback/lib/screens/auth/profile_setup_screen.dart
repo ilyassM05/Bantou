@@ -6,7 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/language_picker.dart';
-import '../circles/circle_dashboard_screen.dart';
+import '../main_shell_screen.dart';
 import '../../services/http_auth_service.dart';
 
 /// Profile setup screen shown once after a user creates their account.
@@ -101,8 +101,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   void _goHome() {
     Navigator.pushReplacementNamed(
       context,
-      CircleDashboardScreen.routeName,
-      arguments: HttpAuthService.currentUser,
+      MainShellScreen.routeName,
     );
   }
 

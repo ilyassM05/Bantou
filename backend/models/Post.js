@@ -161,9 +161,10 @@ const Post = {
         }
 
         // Batch insert — INSERT IGNORE skips duplicate shares
-        const values = recipientIds.map(rid => [postId, sharedBy, rid]);
+        // include user_id = sharedBy to satisfy NOT NULL constraint on user_id
+        const values = recipientIds.map(rid => [postId, sharedBy, sharedBy, rid]);
         await db.query(
-            'INSERT IGNORE INTO post_shares (post_id, shared_by, shared_to) VALUES ?',
+            'INSERT IGNORE INTO post_shares (post_id, user_id, shared_by, shared_to) VALUES ?',
             [values]
         );
     },

@@ -211,35 +211,46 @@ class _SharedPostsScreenState extends State<SharedPostsScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _fetchSharedPosts,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(_error!,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center),
-                    ),
-                  )
-                : _sharedPosts.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _sharedPosts.length,
-                        itemBuilder: (_, index) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildPostCard(index, l10n),
-                        ),
-                      ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_error != null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(_error!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center),
+                ),
+              )
+            else if (_sharedPosts.isEmpty)
+              _buildEmptyState()
+            else
+              ...List.generate(
+                _sharedPosts.length,
+                (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildPostCard(index, l10n),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 80),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             width: 80,
@@ -271,6 +282,7 @@ class _SharedPostsScreenState extends State<SharedPostsScreen> {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
       ),
     );
   }
