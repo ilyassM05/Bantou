@@ -406,30 +406,17 @@ class _AuthScreenState extends State<AuthScreen>
   Widget _buildSocialButtons(BuildContext context) {
     final l = AppLocalizations.of(context);
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SocialButton(
-                provider: SocialProvider.google,
-                onTap: () => _handleSocial(_authService.signInWithGoogle),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SocialButton(
-                provider: SocialProvider.linkedin,
-                onTap: () => _handleSocial(_authService.signInWithLinkedIn),
-              ),
-            ),
-          ],
+        SocialButton(
+          provider: SocialProvider.google,
+          onTap: () => _handleSocial(_authService.signInWithGoogle),
         ),
         const SizedBox(height: 12),
         SocialButton(
           provider: SocialProvider.facebook,
           label: l.continueWithFacebook,
           onTap: () => _handleSocial(_authService.signInWithFacebook),
-          expanded: true,
         ),
       ],
     );

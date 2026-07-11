@@ -64,21 +64,22 @@ class PostService {
   }
 
   Future<void> deletePost(int postId) async {
-    try {
-      final token = await _getToken();
-      if (token == null) throw Exception('Not authenticated');
+    final token = await _getToken();
+    if (token == null) throw Exception('Not authenticated');
 
-      final response = await http.delete(
+    final http.Response response;
+    try {
+      response = await http.delete(
         Uri.parse('$baseUrl/$postId'),
         headers: {'Authorization': 'Bearer $token'},
       );
-
-      if (response.statusCode != 200) {
-        final data = jsonDecode(response.body);
-        throw Exception(data['error'] ?? 'Failed to delete post');
-      }
     } catch (e) {
-      throw Exception('Delete post failed: $e');
+      throw Exception('Network error: could not reach the server.');
+    }
+
+    if (response.statusCode != 200) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['error'] ?? 'Failed to delete post.');
     }
   }
 

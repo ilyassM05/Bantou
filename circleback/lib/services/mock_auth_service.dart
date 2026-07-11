@@ -27,11 +27,6 @@ class MockAuthService implements AuthService {
     return true; // Stub — always succeeds for demo
   }
 
-  @override
-  Future<bool> signInWithLinkedIn() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return true;
-  }
 
   @override
   Future<bool> signInWithFacebook() async {

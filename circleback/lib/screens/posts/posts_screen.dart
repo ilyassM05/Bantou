@@ -719,7 +719,9 @@ class _PostsScreenState extends State<PostsScreen> {
 
   Widget _buildPostCard(int index, AppLocalizations l10n) {
     final post = _posts[index];
-    final bool canDelete = post.userId == _currentUserId || _currentUserRole == 'SA';
+    final bool canDelete = _currentUserRole == 'SA' ||
+        post.userId == _currentUserId ||
+        (_currentUserRole == 'admin' && post.userRole == 'member');
     final bool commentsOpen = _expandedComments.contains(post.id);
     final List<PostComment>? comments = _commentsMap[post.id];
 

@@ -47,24 +47,51 @@ exports.getPosts = async (req, res) => {
 exports.deletePost = async (req, res) => {
     try {
         const userId = req.user.id;
+        const userRole = req.user.role;   // 'SA' | 'admin' | 'member'
         const postId = req.params.id;
 
         const post = await Post.findById(postId);
         if (!post) {
-            return res.status(404).json({ error: 'Post not found' });
+            return res.status(404).json({ error: 'Post not found.' });
         }
 
-        if (post.user_id !== userId && req.user.role !== 'SA') {
-            return res.status(403).json({ error: 'Unauthorized to delete this post.' });
+        const isOwnPost = post.user_id === userId;
+        const authorRole = post.author_role; // 'SA' | 'admin' | 'member'
+
+        // ── Role-based access control ─────────────────────────────────────────
+        // SA: can delete any post
+        // Admin: can delete their own posts OR posts created by members,
+        //        but NOT posts created by SA or other admins
+        // Member: can only delete their own posts
+        let canDelete = false;
+
+        if (userRole === 'SA') {
+            canDelete = true;
+        } else if (userRole === 'admin') {
+            // Admin can delete member posts or their own posts
+            canDelete = isOwnPost || authorRole === 'member';
+        } else {
+            // member
+            canDelete = isOwnPost;
+        }
+
+        if (!canDelete) {
+            if (userRole === 'admin' && (authorRole === 'SA' || authorRole === 'admin')) {
+                return res.status(403).json({
+                    error: 'Admins cannot delete posts created by Super Admins or other Admins.',
+                });
+            }
+            return res.status(403).json({ error: 'You are not authorized to delete this post.' });
         }
 
         await Post.delete(postId);
-        res.status(200).json({ message: 'Post deleted successfully' });
+        res.status(200).json({ message: 'Post deleted successfully.' });
     } catch (error) {
         console.error('Delete post error:', error);
-        res.status(500).json({ error: 'Failed to delete post' });
+        res.status(500).json({ error: 'An unexpected error occurred while deleting the post.' });
     }
 };
+
 
 exports.toggleLike = async (req, res) => {
     try {

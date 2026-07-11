@@ -53,7 +53,12 @@ const Post = {
     },
 
     findById: async (postId) => {
-        const query = 'SELECT * FROM posts WHERE id = ?';
+        const query = `
+            SELECT p.*, u.role AS author_role
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+        `;
         const [rows] = await db.execute(query, [postId]);
         return rows[0];
     },

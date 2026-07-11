@@ -286,21 +286,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         children: [
           Row(
             children: [
-              Text(
-                l.psStepTitle,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+              Flexible(
+                child: Text(
+                  l.psStepTitle,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                l.psHeaderTitle,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  l.psHeaderTitle,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

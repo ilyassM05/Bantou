@@ -398,12 +398,6 @@ class HttpAuthService implements AuthService {
     }
   }
 
-  @override
-  Future<bool> signInWithLinkedIn() async {
-    // Left as mock
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
-  }
 
   @override
   Future<void> signOut() async {
